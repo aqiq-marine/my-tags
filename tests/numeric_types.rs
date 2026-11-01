@@ -46,7 +46,7 @@ stmt experiment has measurement {
 }
 stmt experiment has measurement {
   as_float: 3,
-  as_int: 3,
+  as_int: -0,
   as_nat: 3
 }
 "#;
@@ -64,7 +64,7 @@ stmt experiment has measurement {
 
     let third = &model.statements[2].properties;
     assert!(matches!(third[0].value, Value::Number(NumericValue::Float(value)) if value == 3.0));
-    assert!(matches!(third[1].value, Value::Number(NumericValue::Int(3))));
+    assert!(matches!(third[1].value, Value::Number(NumericValue::Int(0))));
     assert!(matches!(third[2].value, Value::Number(NumericValue::Nat(3))));
 }
 
