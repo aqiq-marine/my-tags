@@ -310,7 +310,7 @@ Hoge {
 
 A property predicate may contain a typed anonymous-value pattern. The example matches a statement whose `huga` value is an anonymous `Piyo` instance and whose nested `bar` property refers to the named instance `baz`. Nested patterns can be arbitrarily deep and are checked against the declared property ranges. The actual anonymous value may have the requested type or one of its subtypes.
 
-Inside an anonymous-value pattern, a bare identifier such as `bar: baz` is shorthand for reference equality (`bar: (== baz)`). All ordinary predicates, including `none` and numeric comparisons, are also available for nested properties. A pattern only matches anonymous values; it does not follow a named reference to another instance.
+In a property predicate, a bare identifier such as `solvent: methanol` or nested `bar: baz` is shorthand for reference equality (`(== methanol)` or `(== baz)`). All ordinary predicates, including `none` and numeric comparisons, are also available for nested properties. A pattern only matches anonymous values; it does not follow a named reference to another instance.
 
 - Comparisons use parenthesized atoms: `(== value)`, `(!= value)`, `(> number)`, `(>= number)`, `(< number)`, and `(<= number)`.
 - `&&` has higher precedence than `||`.
