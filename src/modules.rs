@@ -35,7 +35,7 @@ pub fn load_project_with_source(entry: impl AsRef<Path>) -> Result<LoadedProject
         states: HashMap::new(),
         stack: Vec::new(),
     };
-    let root_id = loader.visit(entry)?;
+    let root_id = loader.visit(entry.clone())?;
     let mut combined = Program { items: Vec::new() };
     let mut source_bundle = String::new();
 
