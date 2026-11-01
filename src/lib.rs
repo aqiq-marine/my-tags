@@ -4,6 +4,7 @@ pub mod diagnostic;
 pub mod lexer;
 pub mod parser;
 pub mod query;
+pub mod query_dsl;
 pub mod resolved;
 pub mod resolver;
 pub mod semantic;

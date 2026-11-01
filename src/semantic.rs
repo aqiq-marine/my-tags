@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use indexmap::IndexMap;
 
 use crate::{
-    ast::{InstanceDefinition, Item, Program, PropertyAssignment, TypeDefinition, TypeExpression, ValueExpression},
+    ast::{CompareOp, InstanceDefinition, Item, Program, PropertyAssignment, PropertyPredicate, QueryExpr, QueryValue, TypeDefinition, TypeExpression, ValueExpression},
     diagnostic::FrontendError,
     lexer::Span,
 };
@@ -35,7 +35,7 @@ pub fn analyze(program: &Program, name: &str, source: &str) -> Result<(), Vec<Fr
                     instances.insert(def.name.clone(), def.clone());
                 }
             }
-            Item::Statement(_) => {}
+            Item::Statement(_) | Item::ShowQuery(_) => {}
         }
     }
 
@@ -94,7 +94,84 @@ pub fn analyze(program: &Program, name: &str, source: &str) -> Result<(), Vec<Fr
         }
     }
 
+    for item in &program.items {
+        if let Item::ShowQuery(query) = item {
+            check_query_expr(&query.expression, &types, &instances, name, source, &mut errors);
+        }
+    }
+
     if errors.is_empty() { Ok(()) } else { Err(errors) }
+}
+
+fn check_query_expr(
+    expression: &QueryExpr,
+    types: &IndexMap<String, TypeDefinition>,
+    instances: &IndexMap<String, InstanceDefinition>,
+    name: &str,
+    source: &str,
+    errors: &mut Vec<FrontendError>,
+) {
+    match expression {
+        QueryExpr::Type { name: type_name, conditions, span } => {
+            if !known_type(type_name, types) {
+                errors.push(issue(name, source, format!("unknown query type {type_name}"), *span));
+                return;
+            }
+            for condition in conditions {
+                let Some(range) = find_property(type_name, &condition.name, types) else {
+                    errors.push(issue(
+                        name, source,
+                        format!("property {} is not defined on query type {type_name}", condition.name),
+                        condition.span,
+                    ));
+                    continue;
+                };
+                check_query_predicate(&condition.predicate, range, types, instances, name, source, errors);
+            }
+        }
+        QueryExpr::And(left, right)
+        | QueryExpr::Or(left, right)
+        | QueryExpr::Difference(left, right) => {
+            check_query_expr(left, types, instances, name, source, errors);
+            check_query_expr(right, types, instances, name, source, errors);
+        }
+        QueryExpr::Not(inner) => check_query_expr(inner, types, instances, name, source, errors),
+    }
+}
+
+fn check_query_predicate(
+    predicate: &PropertyPredicate,
+    range: &TypeExpression,
+    types: &IndexMap<String, TypeDefinition>,
+    instances: &IndexMap<String, InstanceDefinition>,
+    name: &str,
+    source: &str,
+    errors: &mut Vec<FrontendError>,
+) {
+    match predicate {
+        PropertyPredicate::None => {}
+        PropertyPredicate::And(left, right) | PropertyPredicate::Or(left, right) => {
+            check_query_predicate(left, range, types, instances, name, source, errors);
+            check_query_predicate(right, range, types, instances, name, source, errors);
+        }
+        PropertyPredicate::Compare { op, value, span } => match value {
+            QueryValue::Number { .. } => {
+                if range.terms.len() != 1 || range.terms[0] != "Number" {
+                    errors.push(issue(name, source, "numeric comparison requires a Number property", *span));
+                }
+            }
+            QueryValue::Reference { name: value_name, span: value_span } => {
+                if !matches!(op, CompareOp::Eq | CompareOp::Ne) {
+                    errors.push(issue(name, source, "ordering comparisons require a Number value", *span));
+                }
+                match instances.get(value_name) {
+                    Some(instance) if compatible(&instance.instance_type, range, types) => {}
+                    Some(_) => errors.push(issue(name, source, format!("instance {value_name} has an incompatible type for this property"), *value_span)),
+                    None => errors.push(issue(name, source, format!("unknown instance {value_name}"), *value_span)),
+                }
+            }
+        },
+    }
 }
 
 fn known_type(name: &str, types: &IndexMap<String, TypeDefinition>) -> bool {
