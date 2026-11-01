@@ -35,7 +35,7 @@ pub fn analyze(program: &Program, name: &str, source: &str) -> Result<(), Vec<Fr
                     instances.insert(def.name.clone(), def.clone());
                 }
             }
-            Item::Statement(_) | Item::ShowQuery(_) => {}
+            Item::Import(_) | Item::Statement(_) | Item::ShowQuery(_) => {}
         }
     }
 
