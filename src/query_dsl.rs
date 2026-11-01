@@ -3,7 +3,7 @@ use std::fmt;
 
 use crate::{
     ast::{CompareOp, PropertyCondition, PropertyPredicate, QueryExpr, QueryValue},
-    resolved::{InstanceId, PropertyId, ResolvedModel, Statement, TypeId, Value},
+    resolved::{InstanceId, PropertyId, ResolvedModel, TypeId, Value},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
