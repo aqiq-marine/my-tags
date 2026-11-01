@@ -224,7 +224,54 @@ identifier          = letter { letter | digit | "_" } ;
 
 The parser/AST distinguishes type property declarations from statement property assignments, even though both use brace-delimited syntax. The implementation supports line comments, numeric literals, quoted import paths, and module-qualified names. See Section 10 for multi-file module semantics.
 
-## 9. Module imports and namespaces\n\n### 9.1 Import declarations\n\nA source file is one module. Imports are top-level declarations and use an explicit alias:\n\n\`\`\`text\nimport "chemistry.mt" as chemistry\nimport "biology.mt" as biology\n\`\`\`\n\nThe path is resolved relative to the importing file. Paths are local filesystem paths; URL and package-registry imports are not supported. The alias must be a simple identifier and is visible only in the importing module. An import does not re-export the imported module or its aliases.\n\n### 9.2 Qualified names\n\nDefinitions are local to their declaring module. A module may refer to its own types and instances by unqualified names. A symbol from an imported module must be qualified with the import alias and `\`\`::\`\`` separator:\n\n\`\`\`text\nimport "chemistry.mt" as chemistry\n\ndef Sample {\n  atom: chemistry::Atom\n}\n\nlet sample: Sample\nstmt video has chemistry::sample_atom\n\`\`\`\n\nProperty names remain local to the declaring type and are not module-qualified. Declaration names and property names must be unqualified. Import aliases are not implicitly available through transitive imports.\n\n### 9.3 Loading and identity\n\nThe entry file and its transitive imports are loaded as one compilation unit. Each canonical file path is loaded once. A file imported more than once under different aliases by the same importer is rejected; duplicate aliases are rejected. Cyclic imports are rejected and the diagnostic reports the dependency chain.\n\nThe canonical module path relative to the entry file directory, together with the local symbol name, identifies a user-defined type or instance. Thus `chemistry.mt::Atom` and `biology.mt::Atom` are distinct symbols even when their local names match. Built-in types (`Subject`, `Tag`, `Float`, `Int`, and `Nat`) remain globally available and are not qualified.\n\nOnly `#show query` directives in the entry module are executed. Imported modules contribute declarations and statements, not entry-point queries. All definitions in an imported module are currently visible to importers; explicit `pub`/private visibility is deferred.\n\n### 9.4 Import restrictions\n\n- Imports must be top-level declarations.\n- Import aliases must be unique within a module.\n- The same canonical file may not be imported twice by one module.\n- Cyclic imports are errors.\n- Wildcard imports and re-exports are not supported.\n- Only local filesystem paths are supported.\n\n## 10. Semantic validation
+## 9. Module imports and namespaces
+
+### 9.1 Import declarations
+
+A source file is one module. Imports are top-level declarations and use an explicit alias:
+
+\`\`\`text
+import "chemistry.mt" as chemistry
+import "biology.mt" as biology
+\`\`\`
+
+The path is resolved relative to the importing file. Paths are local filesystem paths; URL and package-registry imports are not supported. The alias must be a simple identifier and is visible only in the importing module. An import does not re-export the imported module or its aliases.
+
+### 9.2 Qualified names
+
+Definitions are local to their declaring module. A module may refer to its own types and instances by unqualified names. A symbol from an imported module must be qualified with the import alias and `\`\`::\`\`` separator:
+
+\`\`\`text
+import "chemistry.mt" as chemistry
+
+def Sample {
+  atom: chemistry::Atom
+}
+
+let sample: Sample
+stmt video has chemistry::sample_atom
+\`\`\`
+
+Property names remain local to the declaring type and are not module-qualified. Declaration names and property names must be unqualified. Import aliases are not implicitly available through transitive imports.
+
+### 9.3 Loading and identity
+
+The entry file and its transitive imports are loaded as one compilation unit. Each canonical file path is loaded once. A file imported more than once under different aliases by the same importer is rejected; duplicate aliases are rejected. Cyclic imports are rejected and the diagnostic reports the dependency chain.
+
+The canonical module path relative to the entry file directory, together with the local symbol name, identifies a user-defined type or instance. Thus `chemistry.mt::Atom` and `biology.mt::Atom` are distinct symbols even when their local names match. Built-in types (`Subject`, `Tag`, `Float`, `Int`, and `Nat`) remain globally available and are not qualified.
+
+Only `#show query` directives in the entry module are executed. Imported modules contribute declarations and statements, not entry-point queries. All definitions in an imported module are currently visible to importers; explicit `pub`/private visibility is deferred.
+
+### 9.4 Import restrictions
+
+- Imports must be top-level declarations.
+- Import aliases must be unique within a module.
+- The same canonical file may not be imported twice by one module.
+- Cyclic imports are errors.
+- Wildcard imports and re-exports are not supported.
+- Only local filesystem paths are supported.
+
+## 10. Semantic validation
 
 The v0.1 semantic analyzer should check at least:
 
