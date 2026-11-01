@@ -1,6 +1,6 @@
 # ADR 0001: Initial language model and scope
 
-- **Status:** Proposed
+- **Status:** Superseded by [Language Specification v0.1](../language-v0.1.md)
 - **Date:** 2026-11-01
 
 ## Context
