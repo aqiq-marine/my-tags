@@ -38,7 +38,25 @@ impl Parser<'_> {
         Ok(Program { items })
     }
 
-    fn parse_import(&mut self) -> Result<ImportDeclaration, FrontendError> {\n        let start = self.expect_simple(|kind| matches!(kind, TokenKind::Import), "import")?.span;\n        let (path, path_span) = match self.current().cloned() {\n            Some(Token { kind: TokenKind::String(path), span }) => { self.cursor += 1; (path, span) }\n            _ => return Err(self.error_here("expected a quoted import path")),\n        };\n        self.expect_simple(|kind| matches!(kind, TokenKind::As), "as")?;\n        let (alias, alias_span) = self.expect_identifier()?;\n        if alias.contains("::") { return Err(self.error_at("import alias must be a simple identifier", alias_span)); }\n        Ok(ImportDeclaration { path, alias, span: Span { start: start.start, end: alias_span.end.max(path_span.end) } })\n    }\n\n    fn parse_type_definition(&mut self) -> Result<TypeDefinition, FrontendError> {
+    fn parse_import(&mut self) -> Result<ImportDeclaration, FrontendError> {
+        let start = self.expect_simple(|kind| matches!(kind, TokenKind::Import), "import")?.span;
+        let (path, path_span) = match self.current().cloned() {
+            Some(Token { kind: TokenKind::String(path), span }) => { self.cursor += 1; (path, span) }
+            _ => return Err(self.error_here("expected a quoted import path")),
+        };
+        self.expect_simple(|kind| matches!(kind, TokenKind::As), "as")?;
+        let (alias, alias_span) = self.expect_identifier()?;
+        if alias.contains("::") {
+            return Err(self.error_at("import alias must be a simple identifier", alias_span));
+        }
+        Ok(ImportDeclaration {
+            path,
+            alias,
+            span: Span { start: start.start, end: alias_span.end.max(path_span.end) },
+        })
+    }
+
+    fn parse_type_definition(&mut self) -> Result<TypeDefinition, FrontendError> {
         let start = self.expect_simple(|kind| matches!(kind, TokenKind::Def), "def")?.span;
         let (name, name_span) = self.expect_identifier()?;
 
