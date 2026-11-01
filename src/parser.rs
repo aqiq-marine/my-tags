@@ -431,13 +431,26 @@ impl Parser<'_> {
     }
 
     fn expect_identifier(&mut self) -> Result<(String, Span), FrontendError> {
-        match self.current().cloned() {
+        let (mut name, first_span) = match self.current().cloned() {
             Some(Token { kind: TokenKind::Identifier(name), span }) => {
                 self.cursor += 1;
-                Ok((name, span))
+                (name, span)
             }
-            _ => Err(self.error_here("expected an identifier")),
+            _ => return Err(self.error_here("expected an identifier")),
+        };
+        let mut end = first_span;
+        while self.consume_simple(|kind| matches!(kind, TokenKind::ColonColon)).is_some() {
+            match self.current().cloned() {
+                Some(Token { kind: TokenKind::Identifier(part), span }) => {
+                    self.cursor += 1;
+                    name.push_str("::");
+                    name.push_str(&part);
+                    end = span;
+                }
+                _ => return Err(self.error_here("expected an identifier after ::")),
+            }
         }
+        Ok((name, Span { start: first_span.start, end: end.end }))
     }
 
     fn error_here(&self, message: impl Into<String>) -> FrontendError {
