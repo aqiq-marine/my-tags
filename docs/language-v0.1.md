@@ -171,7 +171,7 @@ Typing rules:
 
 For example, `SolidColor` is valid for a property whose range is `Appearance`, because `SolidColor` inherits from `Appearance`.
 
-## 7. Video subject and tag constraints
+## 7. Subject and tag constraints
 
 - A statement subject must be an instance satisfying the built-in `Subject` type (or a subtype of it).
 - A statement tag must be an instance satisfying the special `Tag` type.
@@ -209,10 +209,15 @@ statement_property_block
                       "}" ;
 
 value_expression    = identifier
-                    | number_literal
+                    | numeric_literal
                     | identifier "{" statement_property_block "}" ;
 
-number_literal      = [ "-" ] digit { digit } ;
+numeric_literal     = [ "-" ] ( integer_literal | float_literal ) ;
+integer_literal     = digit { digit } ;
+float_literal       = digit { digit } "." digit { digit } [ exponent ]
+                    | "." digit { digit } [ exponent ]
+                    | digit { digit } exponent ;
+exponent            = ( "e" | "E" ) [ "+" | "-" ] digit { digit } ;
 
 identifier          = letter { letter | digit | "_" } ;
 ```
