@@ -1,7 +1,7 @@
 pub mod ast;
 pub mod cli;
 pub mod diagnostic;
-pub mod lexer;
+pub mod lexer;\npub mod numeric;
 pub mod parser;
 pub mod query;
 pub mod query_dsl;
@@ -13,4 +13,4 @@ pub mod storage;
 pub use ast::Program;
 pub use parser::parse;
 pub use resolver::{resolve, ResolveError};
-pub use semantic::analyze;
+pub use semantic::analyze;\npub use numeric::NumericValue;
