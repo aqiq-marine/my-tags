@@ -26,7 +26,7 @@ impl FrontendError {
             message,
             span: SourceSpan::new(
                 span.start.into(),
-                span.end.saturating_sub(span.start).into(),
+                span.end.saturating_sub(span.start),
             ),
             source_code: NamedSource::new(source_name.into(), source.to_owned()),
         }
