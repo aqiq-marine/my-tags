@@ -34,7 +34,7 @@ stmt video_b has heck {
 
 stmt video_c has heck {
   ee: 90
-  huga: methanol
+  huga: SolventInfo { solvent: methanol }
 }
 
 #show query Reaction {
