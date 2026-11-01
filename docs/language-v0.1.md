@@ -183,7 +183,7 @@ For example, `SolidColor` is valid for a property whose range is `Appearance`, b
 The following is an initial grammar sketch, not a complete lexer/parser specification.
 
 ```ebnf
-program             = { declaration | statement | show_query } ;
+program             = { import_decl } { declaration | statement | show_query } ;\n\nimport_decl         = "import" string "as" identifier ;
 
 declaration         = type_definition | instance_definition ;
 
@@ -196,11 +196,11 @@ type_property_block = "{"
                       "}" ;
 
 type_expression     = type_term { "+" type_term } ;
-type_term           = identifier ;
+type_term           = qualified_name ;
 
-instance_definition = "let" identifier ":" type_expression ;
+instance_definition = "let" identifier ":" type_expression ;\n\nqualified_name      = identifier { "::" identifier } ;
 
-statement           = "stmt" identifier "has" identifier
+statement           = "stmt" qualified_name "has" qualified_name
                       [ statement_property_block ] ;
 
 statement_property_block
@@ -288,7 +288,7 @@ The v0.1 semantic analyzer should check at least:
 
 Forward references are permitted, so validation should not depend on declaration order.
 
-## 10. AST direction
+## 11. AST direction
 
 A minimal AST can use these top-level node kinds:
 
@@ -315,7 +315,7 @@ ValueExpression
 └── AnonymousInstance(type_name, properties)
 ```
 
-## 11. Open decisions
+## 12. Open decisions
 
 The following are deliberately not fixed by this initial specification:
 
@@ -328,7 +328,7 @@ The following are deliberately not fixed by this initial specification:
 
 These should be resolved as implementation requires, without silently expanding the v0.1 scope.
 
-## 12. Queries
+## 13. Queries
 
 A query is an expression that evaluates to a set of statement subjects (instances). A query is introduced by a display directive:
 
@@ -344,7 +344,7 @@ A type-query block selects subjects having at least one statement whose tag inst
 
 A property named in a query must be declared on the queried type or one of its ancestors. An unknown property is a semantic error, not a query that silently returns an empty set.
 
-### 12.1 Property predicates
+### 13.1 Property predicates
 
 ```text
 Reaction {
@@ -373,7 +373,7 @@ In a property predicate, a bare identifier such as `solvent: methanol` or nested
 
 Property-level NOT is not part of v0.1. Use `none` for explicit absence.
 
-### 12.2 Set operators
+### 13.2 Set operators
 
 ```text
 #show query (Reaction {} & Hoge {}) - Asymmetric {}
@@ -391,7 +391,7 @@ The operators are evaluated over sets of subject instances:
 
 Precedence, from highest to lowest, is unary `!`, then `&` and `-` (left associative), then `|`. Parentheses override precedence. The complement universe is the set of instances that occur as subjects of at least one statement in the current source model.
 
-### 12.3 Query grammar
+### 13.3 Query grammar
 
 The implemented query grammar is summarized below:
 
@@ -419,7 +419,7 @@ comparison       = "==" | "!=" | ">" | ">=" | "<" | "<=" ;
 
 Whitespace and line breaks separate adjacent property conditions; commas are optional separators. Comparisons are parenthesized so that the property predicate grammar remains unambiguous.
 
-### 12.4 Executing display directives
+### 13.4 Executing display directives
 
 `my-tags check file.mt` parses and type-checks queries without evaluating them. `my-tags run file.mt` evaluates each `#show query` directive in source order and prints the matching subject instance names.
 
