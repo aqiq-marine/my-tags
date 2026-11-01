@@ -10,6 +10,7 @@ pub enum Item {
     TypeDefinition(TypeDefinition),
     InstanceDefinition(InstanceDefinition),
     Statement(Statement),
+    ShowQuery(Query),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -74,4 +75,55 @@ impl ValueExpression {
             | Self::AnonymousInstance { span, .. } => *span,
         }
     }
+}
+
+/// A directive that evaluates a query and displays the resulting subject set.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Query {
+    pub expression: QueryExpr,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum QueryExpr {
+    Type {
+        name: String,
+        conditions: Vec<PropertyCondition>,
+        span: Span,
+    },
+    And(Box<QueryExpr>, Box<QueryExpr>),
+    Or(Box<QueryExpr>, Box<QueryExpr>),
+    Difference(Box<QueryExpr>, Box<QueryExpr>),
+    Not(Box<QueryExpr>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PropertyCondition {
+    pub name: String,
+    pub predicate: PropertyPredicate,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompareOp {
+    Eq,
+    Ne,
+    Gt,
+    Ge,
+    Lt,
+    Le,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum QueryValue {
+    Reference { name: String, span: Span },
+    Number { value: i64, span: Span },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum PropertyPredicate {
+    None,
+    Compare { op: CompareOp, value: QueryValue, span: Span },
+    And(Box<PropertyPredicate>, Box<PropertyPredicate>),
+    Or(Box<PropertyPredicate>, Box<PropertyPredicate>),
 }
