@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     ast::{
-        Item, Program, PropertyAssignment, PropertyCondition, PropertyPredicate, QueryExpr,
+        Item, Program, PropertyAssignment, PropertyCondition, PropertyPredicate, Query, QueryExpr,
         QueryValue, TypeExpression, ValueExpression,
     },
     parse,
@@ -18,6 +18,12 @@ use crate::{
 /// before semantic analysis. Import aliases are only visible in the importing
 /// module and are not re-exported.
 pub fn load_project(entry: impl AsRef<Path>) -> Result<Program, ModuleLoadError> {
+    Ok(load_project_with_source(entry)?.program)
+}
+
+/// Loads a project and builds a source bundle whose offsets match the combined AST.
+/// This keeps semantic diagnostics valid even when an error originates in an imported file.
+pub fn load_project_with_source(entry: impl AsRef<Path>) -> Result<LoadedProject, ModuleLoadError> {
     let entry = entry.as_ref().canonicalize().map_err(|source| ModuleLoadError::Io {
         path: entry.as_ref().to_path_buf(),
         source,
@@ -31,9 +37,14 @@ pub fn load_project(entry: impl AsRef<Path>) -> Result<Program, ModuleLoadError>
     };
     let root_id = loader.visit(entry)?;
     let mut combined = Program { items: Vec::new() };
+    let mut source_bundle = String::new();
 
     for (module_id, module) in loader.modules.iter().enumerate() {
         let module = module.as_ref().expect("visited module is populated");
+        source_bundle.push_str(&format!("// module: {}\n", module.key));
+        let source_offset = source_bundle.len();
+        source_bundle.push_str(&module.source);
+        source_bundle.push('\n');
         for item in &module.program.items {
             if matches!(item, Item::Import(_)) {
                 continue;
@@ -50,10 +61,22 @@ pub fn load_project(entry: impl AsRef<Path>) -> Result<Program, ModuleLoadError>
                 &module.aliases,
                 &module.key,
             )?;
+            shift_item_spans(&mut item, source_offset);
             combined.items.push(item);
         }
     }
-    Ok(combined)
+    Ok(LoadedProject {
+        program: combined,
+        source_name: format!("{} (loaded project)", entry.display()),
+        source: source_bundle,
+    })
+}
+
+#[derive(Debug)]
+pub struct LoadedProject {
+    pub program: Program,
+    pub source_name: String,
+    pub source: String,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -78,6 +101,7 @@ struct LoadedModule {
     path: PathBuf,
     key: String,
     program: Program,
+    source: String,
     aliases: HashMap<String, String>,
 }
 
@@ -122,6 +146,7 @@ impl Loader {
             path: path.clone(),
             key,
             program: program.clone(),
+            source: source.clone(),
             aliases: HashMap::new(),
         }));
         self.states.insert(path.clone(), VisitState::Visiting);
@@ -161,6 +186,92 @@ impl Loader {
         self.states.insert(path, VisitState::Visited);
         self.modules[id].as_mut().expect("module was inserted").aliases = aliases;
         Ok(id)
+    }
+}
+
+fn shift_span(span: &mut crate::lexer::Span, offset: usize) {
+    span.start += offset;
+    span.end += offset;
+}
+
+fn shift_item_spans(item: &mut Item, offset: usize) {
+    match item {
+        Item::Import(_) => {}
+        Item::TypeDefinition(def) => {
+            shift_span(&mut def.span, offset);
+            for property in &mut def.properties {
+                shift_span(&mut property.span, offset);
+                shift_span(&mut property.value_type.span, offset);
+            }
+        }
+        Item::InstanceDefinition(def) => {
+            shift_span(&mut def.span, offset);
+            shift_span(&mut def.instance_type.span, offset);
+        }
+        Item::Statement(statement) => {
+            shift_span(&mut statement.span, offset);
+            shift_assignments(&mut statement.properties, offset);
+        }
+        Item::ShowQuery(query) => shift_query(query, offset),
+    }
+}
+
+fn shift_assignments(assignments: &mut [PropertyAssignment], offset: usize) {
+    for assignment in assignments {
+        shift_span(&mut assignment.span, offset);
+        match &mut assignment.value {
+            ValueExpression::Reference { span, .. } | ValueExpression::Number { span, .. } => shift_span(span, offset),
+            ValueExpression::AnonymousInstance { properties, span, .. } => {
+                shift_span(span, offset);
+                shift_assignments(properties, offset);
+            }
+        }
+    }
+}
+
+fn shift_query(query: &mut Query, offset: usize) {
+    shift_span(&mut query.span, offset);
+    shift_query_expr(&mut query.expression, offset);
+}
+
+fn shift_query_expr(expression: &mut QueryExpr, offset: usize) {
+    match expression {
+        QueryExpr::Type { conditions, span, .. } => {
+            shift_span(span, offset);
+            shift_conditions(conditions, offset);
+        }
+        QueryExpr::And(left, right) | QueryExpr::Or(left, right) | QueryExpr::Difference(left, right) => {
+            shift_query_expr(left, offset);
+            shift_query_expr(right, offset);
+        }
+        QueryExpr::Not(inner) => shift_query_expr(inner, offset),
+    }
+}
+
+fn shift_conditions(conditions: &mut [PropertyCondition], offset: usize) {
+    for condition in conditions {
+        shift_span(&mut condition.span, offset);
+        shift_predicate(&mut condition.predicate, offset);
+    }
+}
+
+fn shift_predicate(predicate: &mut PropertyPredicate, offset: usize) {
+    match predicate {
+        PropertyPredicate::None => {}
+        PropertyPredicate::And(left, right) | PropertyPredicate::Or(left, right) => {
+            shift_predicate(left, offset);
+            shift_predicate(right, offset);
+        }
+        PropertyPredicate::Anonymous { conditions, span, .. } => {
+            shift_span(span, offset);
+            shift_conditions(conditions, offset);
+        }
+        PropertyPredicate::Compare { value, span, .. } => {
+            shift_span(span, offset);
+            match value {
+                QueryValue::Reference { span, .. } | QueryValue::Number { span, .. } => shift_span(span, offset),
+            }
+        }
     }
 }
 
