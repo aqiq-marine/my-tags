@@ -2,7 +2,8 @@ use std::collections::HashSet;
 use std::fmt;
 
 use crate::{
-    ast::{CompareOp, PropertyCondition, PropertyPredicate, QueryExpr, QueryValue},\n    numeric::NumericValue,
+    ast::{CompareOp, PropertyCondition, PropertyPredicate, QueryExpr, QueryValue},
+    numeric::NumericValue,
     resolved::{InstanceId, PropertyId, ResolvedModel, TypeId, Value},
 };
 
