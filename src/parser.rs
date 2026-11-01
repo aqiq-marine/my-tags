@@ -364,6 +364,9 @@ impl Parser<'_> {
                     NumericValue::Int(-positive)
                 }
             } else {
+                if magnitude > i64::MAX as u64 {
+                    return Err(self.error_at("Nat literal exceeds the supported range", span));
+                }
                 NumericValue::Nat(magnitude)
             };
             return Ok(Some((value, Span {
@@ -492,7 +495,7 @@ stmt video_a has cat {
             "number.mt",
             "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: 9223372036854775808 }",
         ).unwrap_err();
-        assert!(error.to_string().contains("i64 range"));
+        assert!(error.to_string().contains("Nat literal"));
     }
 
     #[test]
