@@ -39,6 +39,8 @@ pub enum TokenKind {
     Plus,
     #[token("-")]
     Minus,
+    #[token("-")]
+    Minus,
     #[token(",")]
     Comma,
     #[regex(r"[0-9]+", |lex| lex.slice().to_owned())]
