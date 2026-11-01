@@ -56,7 +56,7 @@ pub fn run() -> miette::Result<()> {
             let source = fs::read_to_string(&file).into_diagnostic()?;
             let source_name = file.display().to_string();
             let program = parse(&source_name, &source).map_err(Report::new)?;
-            let model = resolve(&program, &source_name, &source).map_err(Report::new)?;
+            let model = resolve(&program, &source_name, &source).map_err(|error| miette!("{}", error))?;
             let mut query_count = 0usize;
 
             for item in &program.items {
