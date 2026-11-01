@@ -16,3 +16,4 @@ jobs:
       - run: cargo fmt --all
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo test --all-targets
+      - run: cargo run -- check examples/basic.mt
