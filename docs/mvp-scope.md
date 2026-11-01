@@ -5,7 +5,7 @@
 
 ## Goal
 
-Build a small language implementation that defines types and instances, attaches tag instances to whole-video resources through independent statements, validates the data, and supports searching through a programmatic API.
+Build a small language implementation that defines types and instances, attaches tag instances to whole-video resources through independent statements, validates the data, and supports searching through both a programmatic API and a small query DSL.
 
 The v0.1 goal is to validate the core language and data model, not to build a general-purpose knowledge representation system or video-processing platform.
 
@@ -16,7 +16,7 @@ The v0.1 goal is to validate the core language and data model, not to build a ge
 | Annotation granularity | Whole video only |
 | Properties | Optional; each property has at most one value per statement |
 | Storage | Source files |
-| Query interface | Programmatic API; no query DSL |
+| Query interface | Programmatic API and source-level query DSL (`#show query`) |
 | Video identity | Stable user-defined ID |
 | Type inheritance | Single inheritance; inheritance with or without additional properties |
 | Type composition | Intersection using `+` |
@@ -62,9 +62,13 @@ The v0.1 goal is to validate the core language and data model, not to build a ge
 
 ### Query
 - Provide a programmatic API for filtering statements/videos by tag and property values.
-- Return matching video IDs.
-- Boolean composition may be provided by the host API.
-- No dedicated query language is included in v0.1.
+- Provide a source-level query DSL introduced by `#show query`.
+- Query type blocks match statements whose tag has the requested type or a subtype.
+- Property predicates include presence/absence, named-reference equality/inequality, and integer comparisons.
+- Support recursively nested typed anonymous-value patterns, such as `huga: Piyo { bar: baz }`.
+- Nested query patterns match anonymous values only; they do not traverse named references.
+- Support boolean composition of predicates and set operations over matching subject instances.
+- Return matching subject instances; the CLI prints their names. 
 
 ### Storage and developer interface
 - Ontology, instance, and statement data are stored in source files.
@@ -94,8 +98,9 @@ v0.1 is complete when an example project can:
 3. Validate declarations, inheritance, tag eligibility, statement properties, and property value types.
 4. Preserve multiple independent statements for the same video/tag pair.
 5. Preserve optional properties, with at most one value for each property in a statement.
-6. Query through a programmatic API using tag and property conditions.
-7. Return matching video IDs for a documented example.
+6. Query through the programmatic API using tag and property conditions.
+7. Parse, type-check, and execute a documented `#show query` example, including a nested anonymous-value pattern.
+8. Return matching video IDs for the documented example.
 
 ## Related specification
 
