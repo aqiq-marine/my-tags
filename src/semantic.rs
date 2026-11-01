@@ -334,7 +334,7 @@ mod tests {
     use crate::parse;
 
     const EXAMPLE: &str = r#"
-def Video
+def Video: Subject
 def Appearance
 def Color
 def SolidColor { color: Color }: Appearance
@@ -353,9 +353,45 @@ stmt video_a has cat { appearance: SolidColor { color: black } }
         assert!(analyze(&program, "valid.mt", EXAMPLE).is_ok());
     }
 
+
+    #[test]
+    fn accepts_subject_subtypes_and_numeric_upcasts() {
+        let source = "def Experiment: Subject
+def Reaction: Tag { concentration: Float, count: Int, samples: Nat }
+let experiment: Experiment
+let reaction: Reaction
+stmt experiment has reaction { concentration: 25, count: 25, samples: 25 }";
+        let program = parse("numeric.mt", source).unwrap();
+        assert!(analyze(&program, "numeric.mt", source).is_ok());
+    }
+
+    #[test]
+    fn rejects_negative_values_for_nat() {
+        let source = "def Experiment: Subject
+def Reaction: Tag { count: Nat }
+let experiment: Experiment
+let reaction: Reaction
+stmt experiment has reaction { count: -1 }";
+        let program = parse("nat.mt", source).unwrap();
+        let errors = analyze(&program, "nat.mt", source).unwrap_err();
+        assert!(errors.iter().any(|error| error.to_string().contains("incompatible")));
+    }
+
+    #[test]
+    fn rejects_subjects_without_subject_ancestry() {
+        let source = "def Experiment
+def Reaction: Tag
+let experiment: Experiment
+let reaction: Reaction
+stmt experiment has reaction";
+        let program = parse("subject.mt", source).unwrap();
+        let errors = analyze(&program, "subject.mt", source).unwrap_err();
+        assert!(errors.iter().any(|error| error.to_string().contains("must satisfy Subject")));
+    }
+
     #[test]
     fn rejects_non_tag_statement_objects() {
-        let source = "def Video
+        let source = "def Video: Subject
 def Color
 let video: Video
 let white: Color
@@ -367,7 +403,7 @@ stmt video has white";
 
     #[test]
     fn rejects_duplicate_statement_properties() {
-        let source = "def Video
+        let source = "def Video: Subject
 def Animal { color: Int }
 let tag: Tag + Animal
 let video: Video
