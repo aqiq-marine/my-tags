@@ -311,11 +311,10 @@ impl Parser<'_> {
             self.cursor = saved;
         }
 
-        if let Some(Token { kind: TokenKind::Identifier(name), span }) = self.current().cloned()
-            && name != "none"
+        if matches!(self.current().map(|token| &token.kind), Some(TokenKind::Identifier(name)) if name != "none")
             && !matches!(self.tokens.get(self.cursor + 1).map(|token| &token.kind), Some(TokenKind::LeftParen))
         {
-            self.cursor += 1;
+            let (name, span) = self.expect_identifier()?;
             return Ok(PropertyPredicate::Compare {
                 op: CompareOp::Eq,
                 value: QueryValue::Reference { name, span },
