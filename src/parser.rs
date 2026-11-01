@@ -24,14 +24,16 @@ struct Parser<'a> {
 impl Parser<'_> {
     fn parse_program(mut self) -> Result<Program, FrontendError> {
         let mut items = Vec::new();
+        let mut saw_non_import = false;
         while let Some(kind) = self.current().map(|token| token.kind.clone()) {
             let item = match kind {
-                TokenKind::Import => Item::Import(self.parse_import()?),
-                TokenKind::Def => Item::TypeDefinition(self.parse_type_definition()?),
-                TokenKind::Let => Item::InstanceDefinition(self.parse_instance_definition()?),
-                TokenKind::Stmt => Item::Statement(self.parse_statement()?),
-                TokenKind::Hash => Item::ShowQuery(self.parse_show_query()?),
-                _ => return Err(self.error_here("expected a top-level declaration or #show query")),
+                TokenKind::Import if !saw_non_import => Item::Import(self.parse_import()?),
+                TokenKind::Import => return Err(self.error_here("imports must appear before declarations")),
+                TokenKind::Def => { saw_non_import = true; Item::TypeDefinition(self.parse_type_definition()?) },
+                TokenKind::Let => { saw_non_import = true; Item::InstanceDefinition(self.parse_instance_definition()?) },
+                TokenKind::Stmt => { saw_non_import = true; Item::Statement(self.parse_statement()?) },
+                TokenKind::Hash => { saw_non_import = true; Item::ShowQuery(self.parse_show_query()?) },
+                _ => return Err(self.error_here("expected an import, declaration, statement, or #show query")),
             };
             items.push(item);
         }
@@ -591,6 +593,12 @@ stmt video_a has cat {
     fn rejects_qualified_declaration_names() {
         assert!(parse("bad.mt", "def chemistry::Atom").is_err());
         assert!(parse("bad.mt", "let chemistry::atom: Atom").is_err());
+    }
+
+    #[test]
+    fn requires_imports_to_precede_other_items() {
+        let error = parse("late-import.mt", "def Atom\nimport \"chemistry.mt\" as chem").unwrap_err();
+        assert!(error.to_string().contains("imports must appear before declarations"));
     }
 
 }
