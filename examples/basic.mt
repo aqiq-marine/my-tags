@@ -1,6 +1,6 @@
-// Tag and Number are built-in types.
+// Tag and Float are built-in types.
 
-def Video
+def Video: Subject
 def Appearance
 def Color
 
