@@ -271,7 +271,66 @@ The following are deliberately not fixed by this initial specification:
 - Host programming language and exact query API signatures.
 - Cross-file namespaces and identity rules.
 - Unknown/null values and explicit empty values.
-- Query execution strategy and indexing.
+- Query indexing and optimization strategy.
 - Exact diagnostics format.
 
 These should be resolved as implementation requires, without silently expanding the v0.1 scope.
+
+## 12. Queries
+
+A query is an expression that evaluates to a set of statement subjects (instances). A query is introduced by a display directive:
+
+```text
+#show query Reaction {
+  yield: (>= 80)
+} & Hoge {
+  huga: (== p1) || (== p2)
+}
+```
+
+A type-query block selects subjects having at least one statement whose tag instance has the named type (or a subtype). Conditions inside one block are evaluated against the **same statement** and are implicitly ANDed. If a subject has multiple statements, it is selected when at least one matching statement satisfies every condition in that block. Separate type-query blocks are evaluated independently and their subject sets are combined by set operators.
+
+A property named in a query must be declared on the queried type or one of its ancestors. An unknown property is a semantic error, not a query that silently returns an empty set.
+
+### 12.1 Property predicates
+
+```text
+Reaction {
+  yield: (>= 80) && (< 95)
+  solvent: (== methanol) || (== ethanol)
+  catalyst: none
+}
+```
+
+- Comparisons use parenthesized atoms: `(== value)`, `(!= value)`, `(> number)`, `(>= number)`, `(< number)`, and `(<= number)`.
+- `&&` has higher precedence than `||`.
+- Multiple property lines in a type-query block are ANDed.
+- `none` matches a statement in which the property has no assigned value.
+- A property declared on the type is allowed to be absent from an individual statement. `none` tests this statement-local absence; it does not mean that the property is undefined in the ontology.
+- Numeric comparisons require a `Number` property. Reference equality/inequality requires a compatible named instance.
+
+Property-level NOT is not part of v0.1. Use `none` for explicit absence.
+
+### 12.2 Set operators
+
+```text
+#show query (Reaction {} & Hoge {}) - Asymmetric {}
+#show query !(Reaction { yield: (>= 80) })
+```
+
+The operators are evaluated over sets of subject instances:
+
+| Operator | Meaning |
+|---|---|
+| `!` | Complement |
+| `&` | Intersection |
+| `-` | Difference |
+| `|` | Union |
+
+Precedence, from highest to lowest, is unary `!`, then `&` and `-` (left associative), then `|`. Parentheses override precedence. The complement universe is the set of instances that occur as subjects of at least one statement in the current source model.
+
+### 12.3 Executing display directives
+
+`my-tags check file.mt` parses and type-checks queries without evaluating them. `my-tags run file.mt` evaluates each `#show query` directive in source order and prints the matching subject instance names.
+
+The query AST is independent of the existing programmatic statement-query API. Query evaluation currently scans statements; indexing and optimization are future work.
