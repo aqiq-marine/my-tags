@@ -1,6 +1,6 @@
 use my_tags::{parse, resolve, storage};
 use my_tags::resolved::{PropertyId, Value};
-use my_tags::query::{PropertyPath, PropertyPathError};
+use my_tags::query::{PropertyPath, PropertyPathError};\nuse my_tags::query_dsl;
 
 const SOURCE: &str = r#"
 def Video: Subject
@@ -42,6 +42,37 @@ stmt experiment has measurement {
     let measurement = model.types.iter().find(|ty| ty.name == "Measurement").unwrap();
     let concentration = measurement.properties.iter().find(|p| p.name == "concentration").unwrap().id;
     assert_eq!(model.query().where_property_number_gt(concentration, 0.1).collect().len(), 1);
+}
+
+#[test]
+fn query_dsl_compares_float_and_integer_literals() {
+    let source = r#"def Experiment: Subject
+def Measurement: Tag {
+  concentration: Float,
+  count: Int
+}
+let experiment: Experiment
+let measurement: Measurement
+stmt experiment has measurement {
+  concentration: 0.125,
+  count: 25
+}
+#show query Measurement {
+  concentration: (> 0.1)
+  count: (>= 20)
+}"#;
+    let ast = parse("query-numeric.mt", source).unwrap();
+    let model = resolve(&ast, "query-numeric.mt", source).unwrap();
+    let query = ast.items.iter().find_map(|item| {
+        if let my_tags::ast::Item::ShowQuery(query) = item {
+            Some(&query.expression)
+        } else {
+            None
+        }
+    }).unwrap();
+    let results = query_dsl::evaluate(&model, query).unwrap();
+    assert_eq!(results.len(), 1);
+    assert_eq!(model.instance_by_id(*results.iter().next().unwrap()).unwrap().name, "experiment");
 }
 
 #[test]
