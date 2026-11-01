@@ -17,6 +17,34 @@ stmt video has cat { appearance: SolidColor { color: white, opacity: 80 }, weigh
 "#;
 
 #[test]
+fn resolves_float_int_and_nat_with_implicit_upcasts() {
+    use my_tags::NumericValue;
+
+    let source = r#"def Experiment: Subject
+def Measurement {
+  concentration: Float,
+  count: Int,
+  samples: Nat
+}: Tag
+let experiment: Experiment
+let measurement: Measurement
+stmt experiment has measurement {
+  concentration: 0.125,
+  count: 25,
+  samples: 3
+}"#;
+    let ast = parse("numeric.mt", source).unwrap();
+    let model = resolve(&ast, "numeric.mt", source).unwrap();
+    let values = &model.statements[0].properties;
+    assert!(matches!(values[0].value, Value::Number(NumericValue::Float(value)) if value == 0.125));
+    assert!(matches!(values[1].value, Value::Number(NumericValue::Int(25))));
+    assert!(matches!(values[2].value, Value::Number(NumericValue::Nat(3))));
+    let measurement = model.types.iter().find(|ty| ty.name == "Measurement").unwrap();
+    let concentration = measurement.properties.iter().find(|p| p.name == "concentration").unwrap().id;
+    assert_eq!(model.query().where_property_number_gt(concentration, 0.1).collect().len(), 1);
+}
+
+#[test]
 fn resolves_ids_inherited_properties_and_independent_statements() {
     let ast = parse("test.mt", SOURCE).unwrap();
     let model = resolve(&ast, "test.mt", SOURCE).unwrap();
