@@ -315,7 +315,7 @@ stmt video_a has cat {
     fn parses_signed_integer_property_values() {
         let program = parse(
             "number.mt",
-            "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: 2.5 }",
+            "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: -25 }",
         )
         .unwrap();
         let Item::Statement(statement) = program.items.last().unwrap() else {
