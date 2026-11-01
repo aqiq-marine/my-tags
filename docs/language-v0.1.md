@@ -22,7 +22,7 @@ A tag instance and a statement attaching that tag to a subject are distinct enti
 ```text
 def Appearance
 def Color
-def Video
+def Video: Subject
 ```
 
 ### 2.2 Type with properties
@@ -73,8 +73,6 @@ let white: Color
 let black: Color
 
 let cat: Tag + Animal
-def Video: Subject
-
 let video_a: Video
 ```
 
@@ -177,8 +175,8 @@ For example, `SolidColor` is valid for a property whose range is `Appearance`, b
 
 - A statement subject must be an instance satisfying the built-in `Subject` type (or a subtype of it).
 - A statement tag must be an instance satisfying the special `Tag` type.
-- The subject is identified by its stable user-defined instance ID.
-- An annotation applies to the whole video. Time ranges and frame-level annotations are not part of v0.1.
+- The subject is identified by its user-defined instance ID.
+- A statement annotates its subject as a whole. Time ranges and frame-level annotations are not part of v0.1.
 
 ## 8. Provisional EBNF
 
