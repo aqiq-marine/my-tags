@@ -12,8 +12,8 @@ def Mammal: Animal
 let white: Color
 let cat: Tag + Mammal
 let video: Video
-stmt video has cat { appearance: SolidColor { color: white } }
-stmt video has cat { appearance: SolidColor { color: white } }
+stmt video has cat { appearance: SolidColor { color: white, opacity: 80 }, weight: 12 }
+stmt video has cat { appearance: SolidColor { color: white, opacity: 80 }, weight: 12 }
 "#;
 
 #[test]
