@@ -244,7 +244,7 @@ The path is resolved relative to the importing file. Paths are local filesystem 
 
 ### 9.2 Qualified names
 
-Definitions are local to their declaring module. A module may refer to its own types and instances by unqualified names. A symbol from an imported module must be qualified with the import alias and `\`\`::\`\`` separator:
+Definitions are local to their declaring module. A module may refer to its own types and instances by unqualified names. A symbol from an imported module must be qualified with the import alias and the `::` separator:
 
 \`\`\`text
 import "chemistry.mt" as chemistry
