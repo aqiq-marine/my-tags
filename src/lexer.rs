@@ -18,60 +18,36 @@ impl From<std::ops::Range<usize>> for Span {
 #[logos(skip r"[ \t\r\n]+")]
 #[logos(skip r"//[^\n]*")]
 pub enum TokenKind {
-    #[token("def")]
-    Def,
-    #[token("let")]
-    Let,
-    #[token("stmt")]
-    Stmt,
-    #[token("has")]
-    Has,
-    #[token("show")]
-    Show,
-    #[token("query")]
-    Query,
-    #[token("#")]
-    Hash,
-    #[token("{")]
-    LeftBrace,
-    #[token("}")]
-    RightBrace,
-    #[token("(")]
-    LeftParen,
-    #[token(")")]
-    RightParen,
-    #[token(":")]
-    Colon,
-    #[token("+")]
-    Plus,
-    #[token("-")]
-    Minus,
-    #[token("&")]
-    Ampersand,
-    #[token("|")]
-    Pipe,
-    #[token("!")]
-    Bang,
-    #[token("&&")]
-    AndAnd,
-    #[token("||")]
-    OrOr,
-    #[token("==")]
-    EqualEqual,
-    #[token("!=")]
-    NotEqual,
-    #[token(">=")]
-    GreaterEqual,
-    #[token("<=")]
-    LessEqual,
-    #[token(">")]
-    Greater,
-    #[token("<")]
-    Less,
-    #[token(",")]
-    Comma,
+    #[token("def")] Def,
+    #[token("let")] Let,
+    #[token("stmt")] Stmt,
+    #[token("has")] Has,
+    #[token("show")] Show,
+    #[token("query")] Query,
+    #[token("#")] Hash,
+    #[token("{")] LeftBrace,
+    #[token("}")] RightBrace,
+    #[token("(")] LeftParen,
+    #[token(")")] RightParen,
+    #[token(":")] Colon,
+    #[token("+")] Plus,
+    #[token("-")] Minus,
+    #[token("&")] Ampersand,
+    #[token("|")] Pipe,
+    #[token("!")] Bang,
+    #[token("&&")] AndAnd,
+    #[token("||")] OrOr,
+    #[token("==")] EqualEqual,
+    #[token("!=")] NotEqual,
+    #[token(">=")] GreaterEqual,
+    #[token("<=")] LessEqual,
+    #[token(">")] Greater,
+    #[token("<")] Less,
+    #[token(",")] Comma,
+    #[regex(r"(?:[0-9]+\.[0-9]+|\.[0-9]+)(?:[eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+", |lex| lex.slice().to_owned())]
+    Float(String),
     #[regex(r"[0-9]+", |lex| lex.slice().to_owned())]
-    Number(String),
+    Integer(String),
     #[regex(r"[A-Za-z_][A-Za-z0-9_]*", |lex| lex.slice().to_owned())]
     Identifier(String),
 }
@@ -90,14 +66,9 @@ pub fn lex(source_name: &str, source: &str) -> Result<Vec<Token>, FrontendError>
         let span = Span::from(range);
         match result {
             Ok(kind) => tokens.push(Token { kind, span }),
-            Err(()) => {
-                return Err(FrontendError::new(
-                    source_name, source, "unrecognized character", span,
-                ));
-            }
+            Err(()) => return Err(FrontendError::new(source_name, source, "unrecognized character", span)),
         }
     }
-
     Ok(tokens)
 }
 
@@ -123,11 +94,13 @@ mod tests {
     }
 
     #[test]
-    fn recognizes_integer_literals_and_sign() {
-        let tokens = lex("test.mt", "42 -3").unwrap();
-        assert!(matches!(&tokens[0].kind, TokenKind::Number(value) if value == "42"));
-        assert!(matches!(tokens[1].kind, TokenKind::Minus));
-        assert!(matches!(&tokens[2].kind, TokenKind::Number(value) if value == "3"));
+    fn recognizes_integer_and_float_literals() {
+        let tokens = lex("test.mt", "42 -3 0.25 -1.5e-2 .75").unwrap();
+        assert!(matches!(&tokens[0].kind, TokenKind::Integer(value) if value == "42"));
+        assert!(matches!(&tokens[2].kind, TokenKind::Integer(value) if value == "3"));
+        assert!(matches!(&tokens[3].kind, TokenKind::Float(value) if value == "0.25"));
+        assert!(matches!(&tokens[5].kind, TokenKind::Float(value) if value == "1.5e-2"));
+        assert!(matches!(&tokens[6].kind, TokenKind::Float(value) if value == ".75"));
     }
 
     #[test]
@@ -136,10 +109,5 @@ mod tests {
         assert!(tokens.iter().any(|token| matches!(token.kind, TokenKind::Ampersand)));
         assert!(tokens.iter().any(|token| matches!(token.kind, TokenKind::OrOr)));
         assert!(tokens.iter().any(|token| matches!(token.kind, TokenKind::Bang)));
-    }
-
-    #[test]
-    fn rejects_decimal_literals() {
-        assert!(lex("test.mt", "3.5").is_err());
     }
 }
