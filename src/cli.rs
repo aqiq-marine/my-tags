@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 use miette::{IntoDiagnostic, Report, miette};
 
 use crate::{
-    analyze, parse, resolve,
+    analyze, load_project, resolve,
     ast::Item,
     query_dsl,
 };
@@ -37,7 +37,7 @@ pub fn run() -> miette::Result<()> {
         Command::Check { file } => {
             let source = fs::read_to_string(&file).into_diagnostic()?;
             let source_name = file.display().to_string();
-            let program = parse(&source_name, &source).map_err(Report::new)?;
+            let program = load_project(&file).map_err(|error| miette!("{error}"))?;
 
             if let Err(errors) = analyze(&program, &source_name, &source) {
                 for error in errors {
