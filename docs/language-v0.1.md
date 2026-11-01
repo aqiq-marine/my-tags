@@ -216,7 +216,8 @@ value_expression    = qualified_name
                     | numeric_literal
                     | qualified_name "{" statement_property_block "}" ;
 
-string              = '"' { character } '"' ;\nnumeric_literal     = [ "-" ] ( integer_literal | float_literal ) ;
+string              = '"' { character } '"' ;
+numeric_literal     = [ "-" ] ( integer_literal | float_literal ) ;
 integer_literal     = digit { digit } ;
 float_literal       = digit { digit } "." digit { digit } [ exponent ]
                     | "." digit { digit } [ exponent ]
