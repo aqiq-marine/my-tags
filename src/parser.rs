@@ -170,14 +170,12 @@ impl Parser<'_> {
     }
 
     fn parse_value_expression(&mut self) -> Result<ValueExpression, FrontendError> {
-        if let Some(token) = self.current().cloned() {
-            if let TokenKind::Number(raw) = token.kind {
-                self.cursor += 1;
-                let value = raw.parse::<f64>().map_err(|_| {
-                    self.error_at("invalid numeric literal", token.span)
-                })?;
-                return Ok(ValueExpression::Number { value, span: token.span });
-            }
+        if let Some(Token { kind: TokenKind::Number(raw), span }) = self.current().cloned() {
+            self.cursor += 1;
+            let value = raw.parse::<f64>().map_err(|_| {
+                self.error_at("invalid numeric literal", span)
+            })?;
+            return Ok(ValueExpression::Number { value, span });
         }
 
         let (name, name_span) = self.expect_identifier()?;
