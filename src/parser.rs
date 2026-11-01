@@ -499,6 +499,15 @@ stmt video_a has cat {
     }
 
     #[test]
+    fn rejects_non_finite_float_literals() {
+        let error = parse(
+            "float.mt",
+            "def Video: Subject\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: 1e999 }",
+        ).unwrap_err();
+        assert!(error.to_string().contains("must be finite"));
+    }
+
+    #[test]
     fn parses_query_with_set_and_property_logic() {
         let source = r#"
 #show query Reaction {
