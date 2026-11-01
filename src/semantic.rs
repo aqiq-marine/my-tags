@@ -186,7 +186,7 @@ fn check_value(
             None => errors.push(issue(name, source, format!("unknown instance {value_name}"), *span)),
         },
         ValueExpression::Number { span, .. } => {
-            if ranges.iter().any(|range| range.terms.as_slice() != ["Number"]) {
+            if ranges.iter().any(|range| range.terms.len() != 1 || range.terms[0] != "Number") {
                 errors.push(issue(name, source, "numeric literal requires a Number property", *span));
             }
         }
