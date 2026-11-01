@@ -58,7 +58,7 @@ impl Parser<'_> {
 
     fn parse_type_definition(&mut self) -> Result<TypeDefinition, FrontendError> {
         let start = self.expect_simple(|kind| matches!(kind, TokenKind::Def), "def")?.span;
-        let (name, name_span) = self.expect_identifier()?;
+        let (name, name_span) = self.expect_local_identifier()?;
 
         // Accept both parent-before-properties and properties-before-parent forms.
         let parent_before = if self.consume_simple(|kind| matches!(kind, TokenKind::Colon)).is_some() {
@@ -93,7 +93,7 @@ impl Parser<'_> {
             if self.current().is_none() {
                 return Err(self.error_here("unterminated property block; expected }"));
             }
-            let (name, name_span) = self.expect_identifier()?;
+            let (name, name_span) = self.expect_local_identifier()?;
             self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
             let value_type = self.parse_type_expression()?;
             let end = value_type.span;
@@ -124,7 +124,7 @@ impl Parser<'_> {
 
     fn parse_instance_definition(&mut self) -> Result<InstanceDefinition, FrontendError> {
         let start = self.expect_simple(|kind| matches!(kind, TokenKind::Let), "let")?.span;
-        let (name, _) = self.expect_identifier()?;
+        let (name, _) = self.expect_local_identifier()?;
         self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
         let instance_type = self.parse_type_expression()?;
         Ok(InstanceDefinition {
@@ -155,7 +155,7 @@ impl Parser<'_> {
             if self.current().is_none() {
                 return Err(self.error_here("unterminated property block; expected }"));
             }
-            let (name, name_span) = self.expect_identifier()?;
+            let (name, name_span) = self.expect_local_identifier()?;
             self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
             let value = self.parse_value_expression()?;
             let end = value.span();
@@ -242,7 +242,7 @@ impl Parser<'_> {
             if self.current().is_none() {
                 return Err(self.error_here("unterminated query type block; expected }"));
             }
-            let (property, property_span) = self.expect_identifier()?;
+            let (property, property_span) = self.expect_local_identifier()?;
             self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
             let predicate = self.parse_query_predicate_or()?;
             let end = self.previous_span().unwrap_or(property_span);
@@ -288,7 +288,7 @@ impl Parser<'_> {
                 if self.current().is_none() {
                     return Err(self.error_here("unterminated nested query block; expected }"));
                 }
-                let (property, property_span) = self.expect_identifier()?;
+                let (property, property_span) = self.expect_local_identifier()?;
                 self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
                 let predicate = self.parse_query_predicate_or()?;
                 let end = self.previous_span().unwrap_or(property_span);
@@ -428,6 +428,14 @@ impl Parser<'_> {
     ) -> Result<Token, FrontendError> {
         self.consume_simple(predicate)
             .ok_or_else(|| self.error_here(format!("expected {expected}")))
+    }
+
+    fn expect_local_identifier(&mut self) -> Result<(String, Span), FrontendError> {
+        let (name, span) = self.expect_identifier()?;
+        if name.contains("::") {
+            return Err(self.error_at("expected an unqualified identifier", span));
+        }
+        Ok((name, span))
     }
 
     fn expect_identifier(&mut self) -> Result<(String, Span), FrontendError> {
