@@ -8,7 +8,8 @@ impl<'a> Query<'a> {
     pub fn where_subject(mut self, subject: InstanceId) -> Self { self.statements.retain(|s| s.subject == subject); self }
     pub fn where_tag(mut self, tag: InstanceId) -> Self { self.statements.retain(|s| s.tag == tag); self }
     pub fn where_tag_is_subtype_of(mut self, expected: TypeId) -> Self {
-        self.statements.retain(|s| self.model.instance_has_type(s.tag, expected)); self
+        let model = self.model;
+        self.statements.retain(|s| model.instance_has_type(s.tag, expected)); self
     }
     pub fn where_property(mut self, property: crate::resolved::PropertyId) -> Self {
         self.statements.retain(|s| s.properties.iter().any(|v| v.property == property)); self
