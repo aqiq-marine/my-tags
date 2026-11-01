@@ -11,7 +11,7 @@ The language has three declaration/usage layers:
 
 1. **Type layer — `def`:** declares types and their properties.
 2. **Instance layer — `let`:** declares named instances of types.
-3. **Statement layer — `stmt`:** records an independent tag assertion about a video, with optional statement-local properties.
+3. **Statement layer — `stmt`:** records an independent tag assertion about a subject, with optional statement-local properties.
 
 A tag instance and a statement attaching that tag to a subject are distinct entities. Properties in a statement belong to that statement, not to the tag instance. A subject may be any instance whose type inherits from the built-in Subject type.
 
@@ -90,7 +90,7 @@ let video_a: Video
 stmt video_a has cat
 ```
 
-This records that the video instance `video_a` has the tag instance `cat`.
+This records that the subject instance `video_a` has the tag instance `cat`.
 
 ### 5.2 Statement with properties
 
