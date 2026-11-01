@@ -183,7 +183,9 @@ For example, `SolidColor` is valid for a property whose range is `Appearance`, b
 The following is an initial grammar sketch, not a complete lexer/parser specification.
 
 ```ebnf
-program             = { import_decl } { declaration | statement | show_query } ;\n\nimport_decl         = "import" string "as" identifier ;
+program             = { import_decl } { declaration | statement | show_query } ;
+
+import_decl         = "import" string "as" identifier ;
 
 declaration         = type_definition | instance_definition ;
 
@@ -198,7 +200,9 @@ type_property_block = "{"
 type_expression     = type_term { "+" type_term } ;
 type_term           = qualified_name ;
 
-instance_definition = "let" identifier ":" type_expression ;\n\nqualified_name      = identifier { "::" identifier } ;
+instance_definition = "let" identifier ":" type_expression ;
+
+qualified_name      = identifier { "::" identifier } ;
 
 statement           = "stmt" qualified_name "has" qualified_name
                       [ statement_property_block ] ;
@@ -208,9 +212,9 @@ statement_property_block
                       { identifier ":" value_expression }
                       "}" ;
 
-value_expression    = identifier
+value_expression    = qualified_name
                     | numeric_literal
-                    | identifier "{" statement_property_block "}" ;
+                    | qualified_name "{" statement_property_block "}" ;
 
 numeric_literal     = [ "-" ] ( integer_literal | float_literal ) ;
 integer_literal     = digit { digit } ;
