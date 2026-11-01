@@ -13,7 +13,7 @@ The language has three declaration/usage layers:
 2. **Instance layer — `let`:** declares named instances of types.
 3. **Statement layer — `stmt`:** records an independent tag assertion about a video, with optional statement-local properties.
 
-A tag instance and a statement attaching that tag to a video are distinct entities. Properties in a statement belong to that statement, not to the tag instance.
+A tag instance and a statement attaching that tag to a subject are distinct entities. Properties in a statement belong to that statement, not to the tag instance. A subject may be any instance whose type inherits from the built-in Subject type.
 
 ## 2. Type definitions
 
@@ -34,7 +34,7 @@ def Animal {
 }
 ```
 
-A property declaration has a name and a value type (range). The enclosing type is the property's domain. `Video` is an ordinary user-defined type; declare it in the ontology before using it as a statement subject.
+A property declaration has a name and a value type (range). The enclosing type is the property's domain. Application-specific subject types, such as Video or ChemicalReaction, inherit from Subject.
 
 ### 2.3 Inheritance without additional properties
 
@@ -54,7 +54,7 @@ v0.1 supports single inheritance. A child type inherits its parent's properties 
 
 ## 3. Type expressions and Tag eligibility
 
-The special type `Tag` marks instances eligible to be used as tags.
+The built-in type `Subject` is the root type for statement subjects. The special type `Tag` marks instances eligible to be used as tags.
 
 An instance may have an intersection type:
 
@@ -64,7 +64,7 @@ let cat: Tag + Animal
 
 This means the instance satisfies both `Tag` and `Animal`. An instance is eligible as a statement tag only if its type satisfies `Tag`. Merely being a property value, or belonging to an unrelated type, does not make an instance a tag.
 
-v0.1 supports intersection with `+`; union types and general set algebra are out of scope. `Tag` and `Number` are built-in types and cannot be redefined. `Number` values are signed 64-bit integers (`i64`) and may be written as integer literals, including negative values. Decimal literals are not supported in v0.1.
+v0.1 supports intersection with `+`; union types in type expressions are out of scope. The built-in types `Subject`, `Tag`, `Float`, `Int`, and `Nat` cannot be redefined. Numeric types form the subtype chain `Nat <: Int <: Float`. `Nat` values are nonnegative integers (`u64`), `Int` values are signed integers (`i128`), and `Float` values are finite floating-point numbers (`f64`). Implicit widening is allowed from Nat to Int and from Int to Float; narrowing is rejected. Nonnegative integer literals are Nat, negative integer literals are Int, and decimal or exponent-form literals are Float. NaN and positive or negative infinity are rejected.
 
 ## 4. Instance definitions
 
@@ -73,7 +73,7 @@ let white: Color
 let black: Color
 
 let cat: Tag + Animal
-let video_a: Video
+def Video: Subject\n\nlet video_a: Video
 ```
 
 - `let` declares a named instance, not a bare symbol.
@@ -173,7 +173,7 @@ For example, `SolidColor` is valid for a property whose range is `Appearance`, b
 
 ## 7. Video subject and tag constraints
 
-- A statement subject must be an instance satisfying the user-defined `Video` type (or a subtype of it).
+- A statement subject must be an instance satisfying the built-in `Subject` type (or a subtype of it).
 - A statement tag must be an instance satisfying the special `Tag` type.
 - The subject is identified by its stable user-defined instance ID.
 - An annotation applies to the whole video. Time ranges and frame-level annotations are not part of v0.1.
@@ -228,7 +228,7 @@ The v0.1 semantic analyzer should check at least:
 - Unknown parent types and cyclic inheritance.
 - Invalid or duplicate property declarations.
 - Validity of type intersections.
-- Statement subjects are instances of the user-defined `Video` type.
+- Statement subjects satisfy the built-in `Subject` type.
 - Statement tags satisfy `Tag`.
 - Statement properties are declared on the tag type or inherited.
 - Each statement property occurs no more than once.
@@ -317,7 +317,7 @@ In a property predicate, a bare identifier such as `solvent: methanol` or nested
 - Multiple property lines in a type-query block are ANDed.
 - `none` matches a statement in which the property has no assigned value.
 - A property declared on the type is allowed to be absent from an individual statement. `none` tests this statement-local absence; it does not mean that the property is undefined in the ontology.
-- Numeric comparisons require a `Number` property. Reference equality/inequality requires a compatible named instance.
+- Numeric comparisons require a numeric property (`Nat`, `Int`, `Float`, or a subtype). Numeric literals must be compatible with the property's numeric type. Reference equality/inequality requires a compatible named instance.
 
 Property-level NOT is not part of v0.1. Use `none` for explicit absence.
 
