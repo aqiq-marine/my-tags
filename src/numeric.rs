@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 /// A finite numeric value in the language.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum NumericValue {
-    Int(i64),
+    Int(i128),
     Nat(u64),
     Float(f64),
 }
@@ -38,8 +38,8 @@ impl NumericValue {
         match (self, other) {
             (Self::Int(a), Self::Int(b)) => a.partial_cmp(&b),
             (Self::Nat(a), Self::Nat(b)) => a.partial_cmp(&b),
-            (Self::Int(a), Self::Nat(b)) => (a as i128).partial_cmp(&(b as i128)),
-            (Self::Nat(a), Self::Int(b)) => (a as i128).partial_cmp(&(b as i128)),
+            (Self::Int(a), Self::Nat(b)) => a.partial_cmp(&(b as i128)),
+            (Self::Nat(a), Self::Int(b)) => (a as i128).partial_cmp(&b),
             (a, b) => a.as_f64().partial_cmp(&b.as_f64()),
         }
     }
@@ -47,7 +47,7 @@ impl NumericValue {
     pub fn negate(self) -> Option<Self> {
         match self {
             Self::Nat(0) => Some(Self::Int(0)),
-            Self::Nat(value) => i64::try_from(value).ok()?.checked_neg().map(Self::Int),
+            Self::Nat(value) => i128::from(value).checked_neg().map(Self::Int),
             Self::Int(value) => value.checked_neg().map(Self::Int),
             Self::Float(value) => {
                 let result = -value;
