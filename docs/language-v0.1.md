@@ -216,7 +216,7 @@ value_expression    = qualified_name
                     | numeric_literal
                     | qualified_name "{" statement_property_block "}" ;
 
-numeric_literal     = [ "-" ] ( integer_literal | float_literal ) ;
+string              = '"' { character } '"' ;\nnumeric_literal     = [ "-" ] ( integer_literal | float_literal ) ;
 integer_literal     = digit { digit } ;
 float_literal       = digit { digit } "." digit { digit } [ exponent ]
                     | "." digit { digit } [ exponent ]
@@ -323,9 +323,7 @@ ValueExpression
 
 The following are deliberately not fixed by this initial specification:
 
-- File extensions and module/import syntax.
 - Host programming language and exact query API signatures.
-- Cross-file namespaces and identity rules.
 - Unknown/null values and explicit empty values.
 - Query indexing and optimization strategy.
 - Exact diagnostics format.
@@ -406,7 +404,7 @@ query_intersection
                  = query_unary { ("&" | "-") query_unary } ;
 query_unary      = "!" query_unary | query_primary ;
 query_primary    = type_query | "(" query_expr ")" ;
-type_query       = identifier "{" { property_condition } "}" ;
+type_query       = qualified_name "{" { property_condition } "}" ;
 property_condition
                  = identifier ":" property_predicate ;
 property_predicate
@@ -414,10 +412,10 @@ property_predicate
 property_and     = property_atom { "&&" property_atom } ;
 property_atom    = "none"
                  | "(" comparison value ")"
-                 | identifier
+                 | qualified_name
                  | anonymous_pattern ;
 anonymous_pattern
-                 = identifier "{" { property_condition } "}" ;
+                 = qualified_name "{" { property_condition } "}" ;
 comparison       = "==" | "!=" | ">" | ">=" | "<" | "<=" ;
 ```
 
