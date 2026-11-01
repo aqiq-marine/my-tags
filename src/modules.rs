@@ -212,7 +212,7 @@ fn rewrite_item(
     match item {
         Item::Import(_) => {}
         Item::TypeDefinition(def) => {
-            def.name = canonical_name(module, &def.name);
+            if !matches!(def.name.as_str(), "Subject" | "Tag" | "Float" | "Int" | "Nat") {\n                def.name = canonical_name(module, &def.name);\n            }
             if let Some(parent) = &mut def.parent {
                 *parent = resolve_name(parent, module, aliases, true)?;
             }
