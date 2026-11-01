@@ -90,8 +90,8 @@ mod tests {
     #[test]
     fn skips_line_comments() {
         let tokens = lex("test.mt", "def Cat // comment\nlet cat: Cat").unwrap();
-        assert_eq!(tokens.len(), 5);
-        assert!(matches!(tokens[3].kind, TokenKind::Colon));
+        assert_eq!(tokens.len(), 6);
+        assert!(matches!(tokens[4].kind, TokenKind::Colon));
     }
 
     #[test]
