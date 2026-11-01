@@ -68,21 +68,20 @@ The v0.1 goal is to validate the core language and data model, not to build a ge
 - Support recursively nested typed anonymous-value patterns, such as `huga: Piyo { bar: baz }`.
 - Nested query patterns match anonymous values only; they do not traverse named references.
 - Support boolean composition of predicates and set operations over matching subject instances.
-- Return matching subject instances; the CLI prints their names. 
+- Return matching subject instances; the CLI prints their names.
 
 ### Storage and developer interface
 - Ontology, instance, and statement data are stored in source files.
 - Provide a library/API to load, validate, and query those files.
-- A small CLI for validation and diagnostics is optional as a developer aid.
+- Provide CLI commands for source validation and query execution.
 - Diagnostics should include source locations when available.
 
 ## Out of scope
 - Time ranges, timestamps, and frame-level annotations.
 - Relationships between distinct videos or other entities.
 - Image, audio, document, or arbitrary resource types as first-class annotation targets.
-- Query DSL.
 - Multiple inheritance.
-- Union types and general set algebra.
+- Union types and general set algebra in type expressions (query set operators are in scope).
 - Property overriding, range narrowing, and complex constraint composition.
 - Required properties, defaults, and validation of absent optional properties.
 - Dynamic ontology mutation and data migration.
