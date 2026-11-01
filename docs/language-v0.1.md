@@ -300,7 +300,17 @@ Reaction {
   solvent: (== methanol) || (== ethanol)
   catalyst: none
 }
+
+Hoge {
+  huga: Piyo {
+    bar: baz
+  }
+}
 ```
+
+A property predicate may contain a typed anonymous-value pattern. The example matches a statement whose `huga` value is an anonymous `Piyo` instance and whose nested `bar` property refers to the named instance `baz`. Nested patterns can be arbitrarily deep and are checked against the declared property ranges. The actual anonymous value may have the requested type or one of its subtypes.
+
+Inside an anonymous-value pattern, a bare identifier such as `bar: baz` is shorthand for reference equality (`bar: (== baz)`). All ordinary predicates, including `none` and numeric comparisons, are also available for nested properties. A pattern only matches anonymous values; it does not follow a named reference to another instance.
 
 - Comparisons use parenthesized atoms: `(== value)`, `(!= value)`, `(> number)`, `(>= number)`, `(< number)`, and `(<= number)`.
 - `&&` has higher precedence than `||`.
@@ -346,7 +356,12 @@ property_condition
 property_predicate
                  = property_and { "||" property_and } ;
 property_and     = property_atom { "&&" property_atom } ;
-property_atom    = "none" | "(" comparison value ")" ;
+property_atom    = "none"
+                 | "(" comparison value ")"
+                 | identifier
+                 | anonymous_pattern ;
+anonymous_pattern
+                 = identifier "{" { property_condition } "}" ;
 comparison       = "==" | "!=" | ">" | ">=" | "<" | "<=" ;
 ```
 

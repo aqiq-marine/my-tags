@@ -124,6 +124,12 @@ pub enum QueryValue {
 pub enum PropertyPredicate {
     None,
     Compare { op: CompareOp, value: QueryValue, span: Span },
+    /// Match an anonymous value of the given type and recursively match its properties.
+    Anonymous {
+        type_name: String,
+        conditions: Vec<PropertyCondition>,
+        span: Span,
+    },
     And(Box<PropertyPredicate>, Box<PropertyPredicate>),
     Or(Box<PropertyPredicate>, Box<PropertyPredicate>),
 }

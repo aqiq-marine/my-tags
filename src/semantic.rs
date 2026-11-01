@@ -117,17 +117,7 @@ fn check_query_expr(
                 errors.push(issue(name, source, format!("unknown query type {type_name}"), *span));
                 return;
             }
-            for condition in conditions {
-                let Some(range) = find_property(type_name, &condition.name, types) else {
-                    errors.push(issue(
-                        name, source,
-                        format!("property {} is not defined on query type {type_name}", condition.name),
-                        condition.span,
-                    ));
-                    continue;
-                };
-                check_query_predicate(&condition.predicate, range, types, instances, name, source, errors);
-            }
+            check_query_conditions(type_name, conditions, types, instances, name, source, errors);
         }
         QueryExpr::And(left, right)
         | QueryExpr::Or(left, right)
@@ -136,6 +126,28 @@ fn check_query_expr(
             check_query_expr(right, types, instances, name, source, errors);
         }
         QueryExpr::Not(inner) => check_query_expr(inner, types, instances, name, source, errors),
+    }
+}
+
+fn check_query_conditions(
+    owner_type: &str,
+    conditions: &[crate::ast::PropertyCondition],
+    types: &IndexMap<String, TypeDefinition>,
+    instances: &IndexMap<String, InstanceDefinition>,
+    name: &str,
+    source: &str,
+    errors: &mut Vec<FrontendError>,
+) {
+    for condition in conditions {
+        let Some(range) = find_property(owner_type, &condition.name, types) else {
+            errors.push(issue(
+                name, source,
+                format!("property {} is not defined on query type {owner_type}", condition.name),
+                condition.span,
+            ));
+            continue;
+        };
+        check_query_predicate(&condition.predicate, range, types, instances, name, source, errors);
     }
 }
 
@@ -153,6 +165,16 @@ fn check_query_predicate(
         PropertyPredicate::And(left, right) | PropertyPredicate::Or(left, right) => {
             check_query_predicate(left, range, types, instances, name, source, errors);
             check_query_predicate(right, range, types, instances, name, source, errors);
+        }
+        PropertyPredicate::Anonymous { type_name, conditions, span } => {
+            let actual = TypeExpression { terms: vec![type_name.clone()], span: *span };
+            if !known_type(type_name, types) {
+                errors.push(issue(name, source, format!("unknown nested query type {type_name}"), *span));
+            } else if !compatible(&actual, range, types) {
+                errors.push(issue(name, source, format!("nested {type_name} has an incompatible type for this property"), *span));
+            } else {
+                check_query_conditions(type_name, conditions, types, instances, name, source, errors);
+            }
         }
         PropertyPredicate::Compare { op, value, span } => match value {
             QueryValue::Number { .. } => {

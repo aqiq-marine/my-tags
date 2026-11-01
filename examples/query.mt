@@ -2,6 +2,7 @@
 
 def Video
 def Solvent
+def SolventInfo { solvent: Solvent }
 def Reaction: Tag {
   yield: Number
 }
@@ -9,7 +10,7 @@ def Asymmetric: Reaction {
   ee: Number
 }
 def Hoge {
-  huga: Solvent
+  huga: SolventInfo
 }
 
 let methanol: Solvent
@@ -22,24 +23,26 @@ let video_c: Video
 stmt video_a has heck {
   yield: 90
   ee: 80
-  huga: methanol
+  huga: SolventInfo { solvent: methanol }
 }
 
 stmt video_b has heck {
   yield: 70
   ee: 95
-  huga: ethanol
+  huga: SolventInfo { solvent: ethanol }
 }
 
 stmt video_c has heck {
   ee: 90
-  huga: methanol
+  huga: SolventInfo { solvent: methanol }
 }
 
 #show query Reaction {
   yield: (>= 80)
 } & Hoge {
-  huga: (== methanol) || (== ethanol)
+  huga: SolventInfo {
+    solvent: methanol
+  }
 }
 
 #show query Reaction {
