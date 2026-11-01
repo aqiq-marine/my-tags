@@ -351,23 +351,23 @@ impl Parser<'_> {
         }
         if let Some(Token { kind: TokenKind::Integer(raw), span }) = self.current().cloned() {
             self.cursor += 1;
-            let magnitude = raw.parse::<u64>().map_err(|_| {
+            let magnitude = raw.parse::<u128>().map_err(|_| {
                 self.error_at("integer literal is outside the supported range", span)
             })?;
             let value = if minus.is_some() {
-                if magnitude == (i64::MAX as u64) + 1 {
-                    NumericValue::Int(i64::MIN)
+                if magnitude == (i128::MAX as u128) + 1 {
+                    NumericValue::Int(i128::MIN)
                 } else {
-                    let positive = i64::try_from(magnitude).map_err(|_| {
-                        self.error_at("negative integer literal is outside the i64 range", span)
+                    let positive = i128::try_from(magnitude).map_err(|_| {
+                        self.error_at("negative integer literal is outside the i128 range", span)
                     })?;
                     NumericValue::Int(-positive)
                 }
             } else {
-                if magnitude > i64::MAX as u64 {
-                    return Err(self.error_at("Nat literal exceeds the supported range", span));
-                }
-                NumericValue::Nat(magnitude)
+                let natural = u64::try_from(magnitude).map_err(|_| {
+                    self.error_at("Nat literal is outside the u64 range", span)
+                })?;
+                NumericValue::Nat(natural)
             };
             return Ok(Some((value, Span {
                 start: minus.map_or(span.start, |token| token.span.start),
@@ -483,19 +483,19 @@ stmt video_a has cat {
     }
 
     #[test]
-    fn parses_i64_minimum_and_rejects_overflow() {
+    fn parses_i128_minimum_and_rejects_overflow() {
         let minimum = parse(
             "number.mt",
-            "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: -9223372036854775808 }",
+            "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: -170141183460469231731687303715884105728 }",
         ).unwrap();
         let Item::Statement(statement) = minimum.items.last().unwrap() else { panic!("expected statement"); };
-        assert!(matches!(statement.properties[0].value, ValueExpression::Number { value: NumericValue::Int(i64::MIN), .. }));
+        assert!(matches!(statement.properties[0].value, ValueExpression::Number { value: NumericValue::Int(i128::MIN), .. }));
 
         let error = parse(
             "number.mt",
             "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: 9223372036854775808 }",
         ).unwrap_err();
-        assert!(error.to_string().contains("Nat literal"));
+        assert!(error.to_string().contains("i128 range"));
     }
 
     #[test]
