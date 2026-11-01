@@ -39,8 +39,6 @@ pub enum TokenKind {
     Plus,
     #[token("-")]
     Minus,
-    #[token("-")]
-    Minus,
     #[token(",")]
     Comma,
     #[regex(r"[0-9]+", |lex| lex.slice().to_owned())]
@@ -104,5 +102,10 @@ mod tests {
         assert!(matches!(&tokens[0].kind, TokenKind::Number(value) if value == "42"));
         assert!(matches!(tokens[1].kind, TokenKind::Minus));
         assert!(matches!(&tokens[2].kind, TokenKind::Number(value) if value == "3"));
+    }
+
+    #[test]
+    fn rejects_decimal_literals() {
+        assert!(lex("test.mt", "3.5").is_err());
     }
 }
