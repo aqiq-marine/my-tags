@@ -537,3 +537,39 @@ mod tests {
         assert!(error.to_string().contains("b.mt"));
     }
 }
+
+
+    #[test]
+    fn resolves_import_qualified_property_selectors() {
+        let dir = tempdir().unwrap();
+        write(
+            &dir.path().join("chemistry.mt"),
+            "def Hoge\ndef Huga: Tag { hoge: Hoge }\nlet value: Hoge\n",
+        );
+        write(
+            &dir.path().join("main.mt"),
+            r#"import "chemistry.mt" as chem
+def Video: Subject
+def LocalValue
+def Piyo: Tag { hoge: LocalValue }
+let video: Video
+let local_value: LocalValue
+let a: chem::Huga + Piyo
+stmt video has a {
+  chem::Huga::hoge: chem::value
+  Piyo::hoge: local_value
+}
+#show query chem::Huga { chem::Huga::hoge: chem::value }"#,
+        );
+
+        let program = load_project(dir.path().join("main.mt")).unwrap();
+        let source = fs::read_to_string(dir.path().join("main.mt")).unwrap();
+        let model = resolve(&program, "main.mt", &source).unwrap();
+        assert_eq!(model.statements[0].properties.len(), 2);
+        assert!(model.statements[0].properties.iter().any(|property| {
+            model.type_by_id(property.property.owner).is_some_and(|ty| ty.name == "chemistry.mt::Huga")
+        }));
+        assert!(model.statements[0].properties.iter().any(|property| {
+            model.type_by_id(property.property.owner).is_some_and(|ty| ty.name == "main.mt::Piyo")
+        }));
+    }
