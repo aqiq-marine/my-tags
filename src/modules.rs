@@ -84,7 +84,7 @@ pub enum ModuleLoadError {
     #[error("could not read module {path}: {source}")]
     Io { path: PathBuf, #[source] source: std::io::Error },
     #[error("could not parse module {path}: {source}")]
-    Parse { path: PathBuf, #[source] source: crate::diagnostic::FrontendError },
+    Parse { path: PathBuf, #[source] source: Box<crate::diagnostic::FrontendError> },
     #[error("cyclic import detected: {chain}")]
     Cycle { chain: String },
     #[error("module {module} imports {path}, but that file is already imported in this module")]
