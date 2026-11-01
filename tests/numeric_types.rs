@@ -99,14 +99,16 @@ def Experiment: Subject
 def Measurement: Tag {
   leading_dot: Float,
   exponent: Float,
-  negative_exponent: Float
+  negative_exponent: Float,
+  negative_zero: Float
 }
 let experiment: Experiment
 let measurement: Measurement
 stmt experiment has measurement {
   leading_dot: .75,
   exponent: 1e3,
-  negative_exponent: 1.5e-2
+  negative_exponent: 1.5e-2,
+  negative_zero: -0.0
 }
 "#;
     let model = resolve_source(source);
@@ -115,6 +117,7 @@ stmt experiment has measurement {
     assert!(matches!(values[0].value, Value::Number(NumericValue::Float(value)) if value == 0.75));
     assert!(matches!(values[1].value, Value::Number(NumericValue::Float(value)) if value == 1000.0));
     assert!(matches!(values[2].value, Value::Number(NumericValue::Float(value)) if (value - 0.015).abs() < 1e-15));
+    assert!(matches!(values[3].value, Value::Number(NumericValue::Float(value)) if value == 0.0 && value.is_sign_negative()));
 }
 
 #[test]
@@ -163,6 +166,23 @@ fn rejects_numeric_narrowing_conversions() {
             "{label} should fail semantic validation"
         );
     }
+}
+
+#[test]
+fn rejects_non_finite_float_spellings_as_numeric_values() {
+    for literal in ["NaN", "Infinity"] {
+        let source = format!(
+            "def Experiment: Subject\\ndef Measurement: Tag {{ value: Float }}\\nlet experiment: Experiment\\nlet measurement: Measurement\\nstmt experiment has measurement {{ value: {literal} }}"
+        );
+        let program = parse("non-finite.mt", &source).expect("identifier-shaped input should parse");
+        assert!(
+            my_tags::analyze(&program, "non-finite.mt", &source).is_err(),
+            "{literal} must not be accepted as a numeric value"
+        );
+    }
+
+    let negative_infinity = "def Experiment: Subject\\ndef Measurement: Tag { value: Float }\\nlet experiment: Experiment\\nlet measurement: Measurement\\nstmt experiment has measurement { value: -Infinity }";
+    assert!(parse("non-finite.mt", negative_infinity).is_err());
 }
 
 #[test]
