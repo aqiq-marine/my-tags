@@ -3,11 +3,11 @@ use my_tags::resolved::{PropertyId, Value};
 use my_tags::query::{PropertyPath, PropertyPathError};
 
 const SOURCE: &str = r#"
-def Video
+def Video: Subject
 def Appearance
 def Color
-def SolidColor { color: Color, opacity: Number }: Appearance
-def Animal { appearance: Appearance, weight: Number }
+def SolidColor { color: Color, opacity: Int }: Appearance
+def Animal { appearance: Appearance, weight: Int }
 def Mammal: Animal
 let white: Color
 let cat: Tag + Mammal
