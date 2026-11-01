@@ -17,7 +17,8 @@ A statement subject can be any instance whose type inherits from the built-in **
 - ID-based Resolved Model with independent statements and nested anonymous values.
 - Programmatic query API for tag and property filtering.
 - Query DSL with type filters, property predicates, boolean composition, and set operators.
-- Recursive query patterns for nested anonymous property values.\n- Multi-file projects with recursive imports, module-local aliases, qualified symbol references, and cycle detection.
+- Recursive query patterns for nested anonymous property values.
+- Multi-file projects with recursive imports, module-local aliases, qualified symbol references, and cycle detection.
 - CLI commands: my-tags check <file> validates a source file; my-tags run <file> evaluates its #show query directives.
 
 ## Built-in types
@@ -78,7 +79,8 @@ Within a nested pattern, a bare identifier means reference equality. For example
 - [Language Specification v0.1](docs/language-v0.1.md)
 - [Resolved Model](docs/resolved-model.md)
 - [Design Overview](docs/overview.md)
-- [ADR 0001: Initial Language Model](docs/adr/0001-initial-language-model.md)\n- [ADR 0003: Module Imports and Namespaces](docs/adr/0003-module-imports.md)
+- [ADR 0001: Initial Language Model](docs/adr/0001-initial-language-model.md)
+- [ADR 0003: Module Imports and Namespaces](docs/adr/0003-module-imports.md)
 
 ## Status
 
