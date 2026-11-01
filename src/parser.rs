@@ -6,6 +6,7 @@ use crate::{
     },
     diagnostic::FrontendError,
     lexer::{lex, Span, Token, TokenKind},
+    numeric::NumericValue,
 };
 
 pub fn parse(source_name: &str, source: &str) -> Result<Program, FrontendError> {
@@ -150,7 +151,7 @@ impl Parser<'_> {
     }
 
     fn parse_value_expression(&mut self) -> Result<ValueExpression, FrontendError> {
-        if let Some((value, span)) = self.parse_signed_integer()? {
+        if let Some((value, span)) = self.parse_signed_number()? {
             return Ok(ValueExpression::Number { value, span });
         }
         let (name, name_span) = self.expect_identifier()?;
@@ -332,25 +333,38 @@ impl Parser<'_> {
         })
     }
 
-    fn parse_signed_integer(&mut self) -> Result<Option<(i64, Span)>, FrontendError> {
+    fn parse_signed_number(&mut self) -> Result<Option<(NumericValue, Span)>, FrontendError> {
         let minus = self.consume_simple(|kind| matches!(kind, TokenKind::Minus));
-        if let Some(Token { kind: TokenKind::Number(raw), span }) = self.current().cloned() {
+        if let Some(Token { kind: TokenKind::Float(raw), span }) = self.current().cloned() {
+            self.cursor += 1;
+            let mut value = raw.parse::<f64>().map_err(|_| {
+                self.error_at("invalid floating-point literal", span)
+            })?;
+            if minus.is_some() { value = -value; }
+            if !value.is_finite() {
+                return Err(self.error_at("Float literals must be finite", span));
+            }
+            return Ok(Some((NumericValue::Float(value), Span {
+                start: minus.map_or(span.start, |token| token.span.start),
+                end: span.end,
+            })));
+        }
+        if let Some(Token { kind: TokenKind::Integer(raw), span }) = self.current().cloned() {
             self.cursor += 1;
             let magnitude = raw.parse::<u64>().map_err(|_| {
-                self.error_at("integer literal is outside the i64 range", span)
+                self.error_at("integer literal is outside the supported range", span)
             })?;
             let value = if minus.is_some() {
                 if magnitude == (i64::MAX as u64) + 1 {
-                    i64::MIN
+                    NumericValue::Int(i64::MIN)
                 } else {
-                    i64::try_from(magnitude).ok().and_then(i64::checked_neg).ok_or_else(|| {
-                        self.error_at("integer literal is outside the i64 range", span)
-                    })?
+                    let positive = i64::try_from(magnitude).map_err(|_| {
+                        self.error_at("negative integer literal is outside the i64 range", span)
+                    })?;
+                    NumericValue::Int(-positive)
                 }
             } else {
-                i64::try_from(magnitude).map_err(|_| {
-                    self.error_at("integer literal is outside the i64 range", span)
-                })?
+                NumericValue::Nat(magnitude)
             };
             return Ok(Some((value, Span {
                 start: minus.map_or(span.start, |token| token.span.start),
@@ -358,7 +372,7 @@ impl Parser<'_> {
             })));
         }
         if let Some(token) = minus {
-            return Err(self.error_at("expected an integer after -", token.span));
+            return Err(self.error_at("expected a numeric literal after -", token.span));
         }
         Ok(None)
     }
@@ -462,7 +476,7 @@ stmt video_a has cat {
             "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: -25 }",
         ).unwrap();
         let Item::Statement(statement) = program.items.last().unwrap() else { panic!("expected statement"); };
-        assert!(matches!(statement.properties[0].value, ValueExpression::Number { value, .. } if value == -25));
+        assert!(matches!(statement.properties[0].value, ValueExpression::Number { value, .. } if value == NumericValue::Int(-25)));
     }
 
     #[test]
@@ -472,7 +486,7 @@ stmt video_a has cat {
             "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: -9223372036854775808 }",
         ).unwrap();
         let Item::Statement(statement) = minimum.items.last().unwrap() else { panic!("expected statement"); };
-        assert!(matches!(statement.properties[0].value, ValueExpression::Number { value: i64::MIN, .. }));
+        assert!(matches!(statement.properties[0].value, ValueExpression::Number { value: NumericValue::Int(i64::MIN), .. }));
 
         let error = parse(
             "number.mt",
