@@ -58,7 +58,10 @@ impl NumericValue {
 }
 
 impl From<i64> for NumericValue {
-    fn from(value: i64) -> Self { Self::Int(value) }
+    fn from(value: i64) -> Self { Self::Int(i128::from(value)) }
+}
+impl From<i128> for NumericValue {
+    fn from(value: i128) -> Self { Self::Int(value) }
 }
 impl From<u64> for NumericValue {
     fn from(value: u64) -> Self { Self::Nat(value) }
