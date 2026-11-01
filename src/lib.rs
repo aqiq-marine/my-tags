@@ -17,4 +17,4 @@ pub use parser::parse;
 pub use resolver::{resolve, ResolveError};
 pub use semantic::analyze;
 pub use numeric::NumericValue;
-pub use modules::{load_project, ModuleLoadError};
+pub use modules::{load_project, load_project_with_source, LoadedProject, ModuleLoadError};
