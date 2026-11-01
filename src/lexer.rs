@@ -41,7 +41,7 @@ pub enum TokenKind {
     Minus,
     #[token(",")]
     Comma,
-    #[regex(r"[0-9]+(?:\.[0-9]+)?", |lex| lex.slice().to_owned())]
+    #[regex(r"[0-9]+", |lex| lex.slice().to_owned())]
     Number(String),
     #[regex(r"[A-Za-z_][A-Za-z0-9_]*", |lex| lex.slice().to_owned())]
     Identifier(String),
