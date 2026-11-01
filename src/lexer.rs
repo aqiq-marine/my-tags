@@ -20,7 +20,7 @@ impl From<std::ops::Range<usize>> for Span {
 pub enum TokenKind {
     #[token("import")] Import,
     #[token("as")] As,
-    #[regex(r#"\"[^"\\]*\""#, |lex| lex.slice()[1..lex.slice().len()-1].to_owned())]
+    #[regex(r#""[^"\\]*""#, |lex| lex.slice()[1..lex.slice().len()-1].to_owned())]
     String(String),
     #[token("def")] Def,
     #[token("let")] Let,
