@@ -31,6 +31,11 @@ stmt video_b has heck {
   huga: ethanol
 }
 
+stmt video_c has heck {
+  ee: 90
+  huga: methanol
+}
+
 #show query Reaction {
   yield: (>= 80)
 } & Hoge {
