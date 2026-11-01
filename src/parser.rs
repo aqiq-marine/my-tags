@@ -574,4 +574,23 @@ stmt video_a has cat {
         let error = parse("bad.mt", "def Color { value: Int").unwrap_err();
         assert!(error.to_string().contains("unterminated"));
     }
+    #[test]
+    fn parses_imports_and_qualified_names() {
+        let program = parse(
+            "main.mt",
+            "import \"chemistry.mt\" as chem\nlet sample: chem::Molecule\n#show query chem::Molecule { atom: chem::atom }",
+        ).unwrap();
+        assert!(matches!(&program.items[0], Item::Import(import) if import.path == "chemistry.mt" && import.alias == "chem"));
+        let Item::InstanceDefinition(instance) = &program.items[1] else { panic!("expected instance"); };
+        assert_eq!(instance.instance_type.terms, ["chem::Molecule"]);
+        let Item::ShowQuery(query) = &program.items[2] else { panic!("expected query"); };
+        assert!(matches!(&query.expression, QueryExpr::Type { name, .. } if name == "chem::Molecule"));
+    }
+
+    #[test]
+    fn rejects_qualified_declaration_names() {
+        assert!(parse("bad.mt", "def chemistry::Atom").is_err());
+        assert!(parse("bad.mt", "let chemistry::atom: Atom").is_err());
+    }
+
 }
