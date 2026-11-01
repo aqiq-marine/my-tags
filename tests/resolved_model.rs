@@ -195,3 +195,14 @@ stmt video has a { Base::hoge: value }"#;
     let base = model.types.iter().find(|ty| ty.name == "Base").unwrap();
     assert_eq!(model.statements[0].properties[0].property.owner, base.id);
 }
+
+
+#[test]
+fn query_accepts_property_qualified_by_its_declaring_type() {
+    let source = r#"def Hoge
+def Huga: Tag { hoge: Hoge }
+let value: Hoge
+#show query Huga { Huga::hoge: value }"#;
+    let ast = parse("qualified-query.mt", source).unwrap();
+    assert!(resolve(&ast, "qualified-query.mt", source).is_ok());
+}
