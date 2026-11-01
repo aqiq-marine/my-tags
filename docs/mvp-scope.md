@@ -1,112 +1,111 @@
 # my-tags v0.1 MVP Scope
 
-**Status:** Proposed scope agreed for v0.1  
+**Status:** Agreed MVP scope  
 **Date:** 2026-11-01
 
 ## Goal
 
-Build the smallest usable implementation that can define an ontology, annotate whole videos with tags and properties, validate those annotations, and search them through a programmatic API.
+Build a small language implementation that defines types and instances, attaches tag instances to whole-video resources through independent statements, validates the data, and supports searching through a programmatic API.
 
-The MVP is intended to validate the language's core data model. It is not intended to be a general-purpose knowledge representation or video-processing platform.
+The v0.1 goal is to validate the core language and data model, not to build a general-purpose knowledge representation system or video-processing platform.
+
+## Decisions
+
+| Area | v0.1 decision |
+|---|---|
+| Annotation granularity | Whole video only |
+| Properties | Optional; each property has at most one value per statement |
+| Storage | Source files |
+| Query interface | Programmatic API; no query DSL |
+| Video identity | Stable user-defined ID |
+| Type inheritance | Single inheritance; inheritance with or without additional properties |
+| Type composition | Intersection using `+` |
+| Statements | Independent; repeated subject/tag pairs are allowed |
+| Values | `let` defines named instances, not bare symbols |
 
 ## In scope
 
-### 1. Ontology
+### Type definitions
+- Define named types with `def`.
+- Define property-free types and types with properties.
+- Define a type with one parent type, optionally adding properties.
+- Use intersection expressions such as `Tag + Animal` in instance type annotations.
+- Inherit properties from a parent type.
+- In v0.1, inherited properties are used as declared; overriding or narrowing inherited property ranges is not supported.
 
-- Define named sets and membership/subset relationships using `in`.
-- Reserve `Tag` and `Number` as the only primitive roots.
-- Treat `Tag` as the root of concepts eligible to be used as tags. Membership in a property-value set does not by itself make a value a tag.
-- Define properties with a domain and a range.
-- Inherit properties through set inclusion.
-- Allow a subtype to narrow an inherited property's range.
-- Perform semantic validation: resolve names, check membership/type constraints, and detect invalid property definitions.
+### Instances
+- Define named instances with `let`.
+- An instance may satisfy one type or an intersection of types.
+- Values are instances, not untyped symbols.
+- Names are unique within the relevant program/module scope.
+- Nested anonymous instances are allowed in property values.
 
-Example (illustrative syntax):
+### Statements and annotations
+- Use `stmt <video-id> has <tag-instance>` to attach a tag instance to a video.
+- A statement may contain zero or more properties.
+- Properties are optional.
+- Each property may occur at most once within a single statement.
+- Statements are independent. Multiple statements with the same video and tag are retained separately.
+- Statement properties belong to that statement, not to the tag instance itself.
+- Videos are identified by stable IDs.
+- Only whole-video annotations are supported.
 
-```text
-Animal in Tag
-Cat in Animal
+### Validation
+- Resolve type and instance names, including forward references.
+- Check inheritance and type composition.
+- Check that statement subjects are video instances.
+- Check that statement tags satisfy the special `Tag` type.
+- Check that statement properties are available on the tag's type.
+- Check that property values satisfy the declared range, including subtype compatibility.
+- Reject duplicate property names within one statement.
+- Reject cyclic inheritance and duplicate declarations.
 
-Motion
-HasDestination in Motion
-walking in HasDestination
-
-Animal has motion: Motion
-Cat has motion: HasDestination
-```
-
-### 2. Data
-
-- Annotate videos as whole objects; no temporal segments or timestamps in v0.1.
-- Identify each video using a stable user-defined ID, not a filesystem path or URI as its identity.
-- Store ontology and annotation data in files.
-- Allow multiple tags and properties per video.
-- Properties are optional: an annotation need not provide every property defined for its tag.
-- Validate supplied tags and property values against the ontology.
-- Reject unknown identifiers and values outside the declared property range.
-
-Illustrative syntax:
-
-```text
-cat(
-    motion: walking,
-    color: white
-): video_a
-```
-
-The concrete file format and module/import rules remain implementation decisions; the example is not yet a frozen grammar.
-
-### 3. Query
-
-- Expose search through a programmatic API.
-- Do not implement a dedicated query DSL in v0.1.
-- Support filtering by tag membership and property values.
+### Query
+- Provide a programmatic API for filtering statements/videos by tag and property values.
 - Return matching video IDs.
-- Support boolean composition of conditions in the API where practical.
-- Numeric comparisons may be supported for `Number`; ordering comparisons are not defined for ordinary set-valued properties.
+- Boolean composition may be provided by the host API.
+- No dedicated query language is included in v0.1.
 
-The exact API shape and host language are implementation decisions.
-
-### 4. Developer interface
-
-- Provide a library/API for loading ontology and data files, validating them, and querying annotations.
-- A small CLI for validation and diagnostics may be included as a development aid, but a CLI query language is not a v0.1 requirement.
-- Report errors with the source file and location when available.
+### Storage and developer interface
+- Ontology, instance, and statement data are stored in source files.
+- Provide a library/API to load, validate, and query those files.
+- A small CLI for validation and diagnostics is optional as a developer aid.
+- Diagnostics should include source locations when available.
 
 ## Out of scope
-
-- Time ranges, frame-level annotations, and timestamps.
-- Relationships between distinct videos or other annotated entities.
-- Image, audio, document, or arbitrary resource types as first-class targets.
-- Query DSL syntax.
-- Inference/reasoning beyond explicitly declared set inclusion and property inheritance.
-- Union, intersection, and difference as ontology-definition operators.
-- Multiple inheritance and complex property-constraint composition.
-- Required-property constraints, defaults, and validation of absent optional properties.
-- Dynamic ontology mutation and migration of existing data.
+- Time ranges, timestamps, and frame-level annotations.
+- Relationships between distinct videos or other entities.
+- Image, audio, document, or arbitrary resource types as first-class annotation targets.
+- Query DSL.
+- Multiple inheritance.
+- Union types and general set algebra.
+- Property overriding, range narrowing, and complex constraint composition.
+- Required properties, defaults, and validation of absent optional properties.
+- Dynamic ontology mutation and data migration.
 - Database-backed storage and external database integrations.
 - GUI/editor, LSP, autocomplete, and automatic video analysis/tagging.
+- Inference beyond declared type inheritance and subtype compatibility.
 
 ## Acceptance criteria
 
 v0.1 is complete when an example project can:
+1. Load type and instance declarations from source files.
+2. Load whole-video statements using stable video IDs.
+3. Validate declarations, inheritance, tag eligibility, statement properties, and property value types.
+4. Preserve multiple independent statements for the same video/tag pair.
+5. Preserve optional properties, with at most one value for each property in a statement.
+6. Query through a programmatic API using tag and property conditions.
+7. Return matching video IDs for a documented example.
 
-1. Load ontology definitions from files.
-2. Validate the ontology and report malformed or inconsistent definitions.
-3. Load video annotations from files using stable video IDs.
-4. Accept whole-video tags and optional properties.
-5. Reject tags that are not eligible tags and property values outside their declared ranges.
-6. Query annotations through a programmatic API using tag and property conditions.
-7. Return the matching video IDs for a documented example query.
+## Related specification
 
-## Decisions intentionally left open
+See [Language Specification v0.1](language-v0.1.md) for the provisional grammar and semantic rules.
 
-- Exact source grammar and file extensions.
-- Module/import and multi-file organization.
-- Exact distinction and type rules for sets, set members, and tag-eligible concepts.
+## Intentionally deferred decisions
+- Exact file extensions and module/import syntax.
 - Exact API signatures and host programming language.
-- Annotation identity and duplicate-annotation behavior.
-- Representation of unknown or explicitly empty property values.
-- Whether query evaluation is eager or can be backed by an index.
+- Persistent identity format and cross-file namespace rules.
+- Unknown/null values and explicit empty values.
+- Whether query evaluation is eager or index-backed.
 
-These decisions should be made only when needed by the implementation, while preserving the scope above.
+These details can be decided during implementation without expanding the agreed v0.1 scope.
