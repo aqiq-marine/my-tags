@@ -1,3 +1,5 @@
+> **Status:** Historical design notes. The initial `in`-based notation described below has been superseded by the `def` / `let` / `stmt` language model in [Language Specification v0.1](language-v0.1.md). Use that specification as the implementation reference.
+
 # Language design overview
 
 This document records the current design direction. Examples are illustrative and do not define a finalized grammar.
