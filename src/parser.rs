@@ -325,6 +325,22 @@ stmt video_a has cat {
     }
 
     #[test]
+    fn parses_i64_minimum_and_rejects_overflow() {
+        let minimum = parse(
+            "number.mt",
+            "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: -9223372036854775808 }",
+        ).unwrap();
+        let Item::Statement(statement) = minimum.items.last().unwrap() else { panic!("expected statement"); };
+        assert!(matches!(statement.properties[0].value, ValueExpression::Number { value: i64::MIN, .. }));
+
+        let error = parse(
+            "number.mt",
+            "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: 9223372036854775808 }",
+        ).unwrap_err();
+        assert!(error.to_string().contains("i64 range"));
+    }
+
+    #[test]
     fn reports_unclosed_blocks() {
         let error = parse("bad.mt", "def Color { value: Number").unwrap_err();
         assert!(error.to_string().contains("unterminated"));
