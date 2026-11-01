@@ -1,8 +1,7 @@
 use std::collections::HashSet;
 
 use my_tags::{
-    NumericValue, parse, query_dsl, resolve,
-    ast::Item,
+    ast::Item, parse, query_dsl, resolve, NumericValue,
     resolved::Value,
 };
 
@@ -180,13 +179,13 @@ stmt b has metric { score: 2.0 }
 stmt c has metric { score: 3 }
 "#;
 
-    let cases = [
-        ("==", "2", ["b"]),
-        ("!=", "2", ["a", "c"]),
-        (">", "2", ["c"]),
-        (">=", "2", ["b", "c"]),
-        ("<", "2", ["a"]),
-        ("<=", "2", ["a", "b"]),
+    let cases: [(&str, &str, &[&str]); 6] = [
+        ("==", "2", &["b"]),
+        ("!=", "2", &["a", "c"]),
+        (">", "2", &["c"]),
+        (">=", "2", &["b", "c"]),
+        ("<", "2", &["a"]),
+        ("<=", "2", &["a", "b"]),
     ];
 
     for (operator, expected, names) in cases {
@@ -195,7 +194,7 @@ stmt c has metric { score: 3 }
         );
         assert_eq!(
             query_subject_names(&source),
-            names.into_iter().map(str::to_owned).collect(),
+            names.iter().map(|name| (*name).to_owned()).collect(),
             "operator {operator} should compare mixed Nat/Float values"
         );
     }
