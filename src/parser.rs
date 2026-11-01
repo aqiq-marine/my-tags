@@ -152,7 +152,7 @@ impl Parser<'_> {
 
     fn parse_value_expression(&mut self) -> Result<ValueExpression, FrontendError> {
         if let Some((value, span)) = self.parse_signed_number()? {
-            return Ok(ValueExpression::Int { value, span });
+            return Ok(ValueExpression::Number { value, span });
         }
         let (name, name_span) = self.expect_identifier()?;
         if self.check(|kind| matches!(kind, TokenKind::LeftBrace)) {
@@ -321,8 +321,8 @@ impl Parser<'_> {
             _ => return Err(self.error_here("expected a comparison operator")),
         };
         self.cursor += 1;
-        let value = if let Some((value, span)) = self.parse_signed_integer()? {
-            QueryValue::Int { value, span }
+        let value = if let Some((value, span)) = self.parse_signed_number()? {
+            QueryValue::Number { value, span }
         } else {
             let (name, span) = self.expect_identifier()?;
             QueryValue::Reference { name, span }
@@ -479,7 +479,7 @@ stmt video_a has cat {
             "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: -25 }",
         ).unwrap();
         let Item::Statement(statement) = program.items.last().unwrap() else { panic!("expected statement"); };
-        assert!(matches!(statement.properties[0].value, ValueExpression::Int { value, .. } if value == NumericValue::Int(-25)));
+        assert!(matches!(statement.properties[0].value, ValueExpression::Number { value, .. } if value == NumericValue::Int(-25)));
     }
 
     #[test]
@@ -489,7 +489,7 @@ stmt video_a has cat {
             "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: -170141183460469231731687303715884105728 }",
         ).unwrap();
         let Item::Statement(statement) = minimum.items.last().unwrap() else { panic!("expected statement"); };
-        assert!(matches!(statement.properties[0].value, ValueExpression::Int { value: NumericValue::Int(i128::MIN), .. }));
+        assert!(matches!(statement.properties[0].value, ValueExpression::Number { value: NumericValue::Int(i128::MIN), .. }));
 
         let error = parse(
             "number.mt",
