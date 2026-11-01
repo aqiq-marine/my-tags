@@ -13,7 +13,7 @@ The parser AST preserves source-level names and syntax. The Resolved Model is a 
 
 ## Values
 
-Named references resolve to InstanceId; numeric literals remain numbers; nested anonymous values carry their TypeId and recursively resolved properties. Anonymous values do not enter the named instance table.
+Named references resolve to InstanceId; numeric literals are stored as signed 64-bit integers (`i64`); nested anonymous values carry their TypeId and recursively resolved properties. Anonymous values do not enter the named instance table.
 
 ## Statements
 
@@ -25,17 +25,23 @@ The source file is canonical. JSON serialization is provided as a debugging/expo
 
 ## Query API
 
-The first query API is a Rust builder over statements:
+Queries operate on statements and combine filters with AND. Each matching statement is retained independently, including repeated subject/tag pairs. `subjects()` explicitly returns distinct subjects in first-seen order.
 
 ```rust
 let matching = model.query()
-    .statements()
     .where_tag_is_subtype_of(animal_type)
+    .where_property_exists(weight)
+    .where_property_number_gt(weight, 10)
     .collect();
-
-let videos = model.query()
-    .where_tag_is_subtype_of(animal_type)
-    .subjects();
 ```
 
-Statement queries preserve duplicates. subjects() explicitly returns distinct subjects in first-seen order.
+Property filters support presence, named-reference equality, integer comparisons (`eq`, `ne`, `gt`, `ge`, `lt`, `le`), and anonymous-value subtype checks. Nested anonymous values are addressed with a validated `PropertyPath`:
+
+```rust
+let path = PropertyPath::resolve(&model, appearance, &[color])?;
+let matching = model.query()
+    .where_property_path_reference_equals(&path, white)
+    .collect();
+```
+
+A path is validated against the declared property ranges. Traversal through named references is not supported because named instances do not store property values in this model. The initial implementation scans statements linearly; indexes are deferred.

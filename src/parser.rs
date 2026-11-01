@@ -170,12 +170,33 @@ impl Parser<'_> {
     }
 
     fn parse_value_expression(&mut self) -> Result<ValueExpression, FrontendError> {
+        let minus = self.consume_simple(|kind| matches!(kind, TokenKind::Minus));
         if let Some(Token { kind: TokenKind::Number(raw), span }) = self.current().cloned() {
             self.cursor += 1;
-            let value = raw.parse::<f64>().map_err(|_| {
-                self.error_at("invalid numeric literal", span)
+            let magnitude = raw.parse::<u64>().map_err(|_| {
+                self.error_at("integer literal is outside the i64 range", span)
             })?;
-            return Ok(ValueExpression::Number { value, span });
+            let value = if minus.is_some() {
+                if magnitude == (i64::MAX as u64) + 1 {
+                    i64::MIN
+                } else {
+                    i64::try_from(magnitude).ok().and_then(i64::checked_neg).ok_or_else(|| {
+                        self.error_at("integer literal is outside the i64 range", span)
+                    })?
+                }
+            } else {
+                i64::try_from(magnitude).map_err(|_| {
+                    self.error_at("integer literal is outside the i64 range", span)
+                })?
+            };
+            let full_span = Span {
+                start: minus.map_or(span.start, |token| token.span.start),
+                end: span.end,
+            };
+            return Ok(ValueExpression::Number { value, span: full_span });
+        }
+        if minus.is_some() {
+            return Err(self.error_here("expected an integer after `-`"));
         }
 
         let (name, name_span) = self.expect_identifier()?;
@@ -291,16 +312,32 @@ stmt video_a has cat {
     }
 
     #[test]
-    fn parses_numeric_property_values() {
+    fn parses_signed_integer_property_values() {
         let program = parse(
             "number.mt",
-            "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: 2.5 }",
+            "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: -25 }",
         )
         .unwrap();
         let Item::Statement(statement) = program.items.last().unwrap() else {
             panic!("expected statement");
         };
-        assert!(matches!(statement.properties[0].value, ValueExpression::Number { value, .. } if value == 2.5));
+        assert!(matches!(statement.properties[0].value, ValueExpression::Number { value, .. } if value == -25));
+    }
+
+    #[test]
+    fn parses_i64_minimum_and_rejects_overflow() {
+        let minimum = parse(
+            "number.mt",
+            "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: -9223372036854775808 }",
+        ).unwrap();
+        let Item::Statement(statement) = minimum.items.last().unwrap() else { panic!("expected statement"); };
+        assert!(matches!(statement.properties[0].value, ValueExpression::Number { value: i64::MIN, .. }));
+
+        let error = parse(
+            "number.mt",
+            "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: 9223372036854775808 }",
+        ).unwrap_err();
+        assert!(error.to_string().contains("i64 range"));
     }
 
     #[test]

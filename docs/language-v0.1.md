@@ -64,7 +64,7 @@ let cat: Tag + Animal
 
 This means the instance satisfies both `Tag` and `Animal`. An instance is eligible as a statement tag only if its type satisfies `Tag`. Merely being a property value, or belonging to an unrelated type, does not make an instance a tag.
 
-v0.1 supports intersection with `+`; union types and general set algebra are out of scope. `Tag` and `Number` are built-in types and cannot be redefined. `Number` values may be written as integer or decimal literals in property assignments.
+v0.1 supports intersection with `+`; union types and general set algebra are out of scope. `Tag` and `Number` are built-in types and cannot be redefined. `Number` values are signed 64-bit integers (`i64`) and may be written as integer literals, including negative values. Decimal literals are not supported in v0.1.
 
 ## 4. Instance definitions
 
@@ -212,7 +212,7 @@ value_expression    = identifier
                     | number_literal
                     | identifier "{" statement_property_block "}" ;
 
-number_literal      = digit { digit } [ "." digit { digit } ] ;
+number_literal      = [ "-" ] digit { digit } ;
 
 identifier          = letter { letter | digit | "_" } ;
 ```

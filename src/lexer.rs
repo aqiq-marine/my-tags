@@ -37,9 +37,11 @@ pub enum TokenKind {
     Colon,
     #[token("+")]
     Plus,
+    #[token("-")]
+    Minus,
     #[token(",")]
     Comma,
-    #[regex(r"[0-9]+(?:\.[0-9]+)?", |lex| lex.slice().to_owned())]
+    #[regex(r"[0-9]+", |lex| lex.slice().to_owned())]
     Number(String),
     #[regex(r"[A-Za-z_][A-Za-z0-9_]*", |lex| lex.slice().to_owned())]
     Identifier(String),
@@ -95,9 +97,15 @@ mod tests {
     }
 
     #[test]
-    fn recognizes_numeric_literals() {
-        let tokens = lex("test.mt", "42 3.5").unwrap();
+    fn recognizes_integer_literals_and_sign() {
+        let tokens = lex("test.mt", "42 -3").unwrap();
         assert!(matches!(&tokens[0].kind, TokenKind::Number(value) if value == "42"));
-        assert!(matches!(&tokens[1].kind, TokenKind::Number(value) if value == "3.5"));
+        assert!(matches!(tokens[1].kind, TokenKind::Minus));
+        assert!(matches!(&tokens[2].kind, TokenKind::Number(value) if value == "3"));
+    }
+
+    #[test]
+    fn rejects_decimal_literals() {
+        assert!(lex("test.mt", "3.5").is_err());
     }
 }
