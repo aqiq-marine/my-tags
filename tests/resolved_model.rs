@@ -25,7 +25,7 @@ fn resolves_ids_inherited_properties_and_independent_statements() {
     let appearance = animal.properties.iter().find(|property| property.name == "appearance").unwrap();
     assert_eq!(model.statements[0].properties[0].property, appearance.id);
     assert_eq!(appearance.id, PropertyId { owner: animal.id, index: 0 });
-    assert!(matches!(model.statements[0].properties[0].value, Value::Anonymous { .. }));
+    assert!(matches!(&model.statements[0].properties[0].value, Value::Anonymous { .. }));
 }
 
 #[test]
