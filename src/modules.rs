@@ -138,7 +138,7 @@ impl Loader {
         })?;
         let source_name = path.display().to_string();
         let program = parse(&source_name, &source)
-            .map_err(|source| ModuleLoadError::Parse { path: path.clone(), source })?;
+            .map_err(|source| ModuleLoadError::Parse { path: path.clone(), source: Box::new(source) })?;
         let key = path.strip_prefix(&self.root).unwrap_or(&path)
             .to_string_lossy().replace('\\', "/");
         let id = self.modules.len();
