@@ -536,8 +536,6 @@ mod tests {
         assert!(error.to_string().contains("a.mt"));
         assert!(error.to_string().contains("b.mt"));
     }
-}
-
 
     #[test]
     fn resolves_import_qualified_property_selectors() {
@@ -573,3 +571,4 @@ stmt video has a {
             model.type_by_id(property.property.owner).is_some_and(|ty| ty.name == "main.mt::Piyo")
         }));
     }
+}
