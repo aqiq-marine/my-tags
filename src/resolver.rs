@@ -146,20 +146,19 @@ fn resolve_value(
             let expected_names: Vec<_> = expected_types.iter()
                 .filter_map(|id| model.type_by_id(*id).map(|ty| ty.name.as_str()))
                 .collect();
-            let value = if expected_names.contains(&"Float") {
-                NumericValue::Float(value.as_f64())
+            let value = if expected_names.contains(&"Nat") {
+                match value {
+                    NumericValue::Nat(number) => NumericValue::Nat(*number),
+                    _ => unreachable!("semantic validation rejects non-Nat values for Nat properties"),
+                }
             } else if expected_names.contains(&"Int") {
                 match value {
                     NumericValue::Nat(number) => NumericValue::Int(i128::from(*number)),
                     NumericValue::Int(number) => NumericValue::Int(*number),
-                    NumericValue::Float(number) => NumericValue::Int(*number as i128),
+                    NumericValue::Float(_) => unreachable!("semantic validation rejects Float-to-Int narrowing"),
                 }
-            } else if expected_names.contains(&"Nat") {
-                match value {
-                    NumericValue::Nat(number) => NumericValue::Nat(*number),
-                    NumericValue::Int(number) => NumericValue::Nat(*number as u64),
-                    NumericValue::Float(number) => NumericValue::Nat(*number as u64),
-                }
+            } else if expected_names.contains(&"Float") {
+                NumericValue::Float(value.as_f64())
             } else {
                 *value
             };
