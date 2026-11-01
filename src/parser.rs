@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        CompareOp, InstanceDefinition, Item, Program, PropertyAssignment, PropertyCondition,
+        CompareOp, ImportDeclaration, InstanceDefinition, Item, Program, PropertyAssignment, PropertyCondition,
         PropertyDefinition, PropertyPredicate, Query, QueryExpr, QueryValue, Statement,
         TypeDefinition, TypeExpression, ValueExpression,
     },
@@ -26,6 +26,7 @@ impl Parser<'_> {
         let mut items = Vec::new();
         while let Some(kind) = self.current().map(|token| token.kind.clone()) {
             let item = match kind {
+                TokenKind::Import => Item::Import(self.parse_import()?),
                 TokenKind::Def => Item::TypeDefinition(self.parse_type_definition()?),
                 TokenKind::Let => Item::InstanceDefinition(self.parse_instance_definition()?),
                 TokenKind::Stmt => Item::Statement(self.parse_statement()?),
@@ -37,7 +38,7 @@ impl Parser<'_> {
         Ok(Program { items })
     }
 
-    fn parse_type_definition(&mut self) -> Result<TypeDefinition, FrontendError> {
+    fn parse_import(&mut self) -> Result<ImportDeclaration, FrontendError> {\n        let start = self.expect_simple(|kind| matches!(kind, TokenKind::Import), "import")?.span;\n        let (path, path_span) = match self.current().cloned() {\n            Some(Token { kind: TokenKind::String(path), span }) => { self.cursor += 1; (path, span) }\n            _ => return Err(self.error_here("expected a quoted import path")),\n        };\n        self.expect_simple(|kind| matches!(kind, TokenKind::As), "as")?;\n        let (alias, alias_span) = self.expect_identifier()?;\n        if alias.contains("::") { return Err(self.error_at("import alias must be a simple identifier", alias_span)); }\n        Ok(ImportDeclaration { path, alias, span: Span { start: start.start, end: alias_span.end.max(path_span.end) } })\n    }\n\n    fn parse_type_definition(&mut self) -> Result<TypeDefinition, FrontendError> {
         let start = self.expect_simple(|kind| matches!(kind, TokenKind::Def), "def")?.span;
         let (name, name_span) = self.expect_identifier()?;
 
