@@ -1,4 +1,4 @@
-// Tag and Float are built-in types.
+// Subject, Tag, Float, Int, and Nat are built-in types.
 
 def Video: Subject
 def Appearance
