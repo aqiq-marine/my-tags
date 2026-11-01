@@ -139,3 +139,59 @@ fn property_path_rejects_invalid_nested_property() {
         Err(PropertyPathError::InvalidTransition { .. })
     ));
 }
+
+
+#[test]
+fn qualified_properties_disambiguate_intersection_members() {
+    let source = r#"def Video: Subject
+def Hoge
+def Huga: Tag { hoge: Hoge }
+def Piyo: Tag { hoge: Hoge }
+let video: Video
+let value: Hoge
+let a: Huga + Piyo
+stmt video has a {
+  Huga::hoge: value
+  Piyo::hoge: value
+}"#;
+    let ast = parse("qualified-properties.mt", source).unwrap();
+    let model = resolve(&ast, "qualified-properties.mt", source).unwrap();
+
+    let huga = model.types.iter().find(|ty| ty.name == "Huga").unwrap();
+    let piyo = model.types.iter().find(|ty| ty.name == "Piyo").unwrap();
+    assert_eq!(model.statements[0].properties.len(), 2);
+    assert_eq!(model.statements[0].properties[0].property.owner, huga.id);
+    assert_eq!(model.statements[0].properties[1].property.owner, piyo.id);
+}
+
+#[test]
+fn unqualified_ambiguous_property_still_reports_an_error() {
+    let source = r#"def Video: Subject
+def Hoge
+def Huga: Tag { hoge: Hoge }
+def Piyo: Tag { hoge: Hoge }
+let video: Video
+let value: Hoge
+let a: Huga + Piyo
+stmt video has a { hoge: value }"#;
+    let ast = parse("ambiguous-properties.mt", source).unwrap();
+    let error = resolve(&ast, "ambiguous-properties.mt", source).unwrap_err();
+    assert!(error.to_string().contains("ambiguous"));
+}
+
+#[test]
+fn inherited_property_can_be_selected_by_its_declaring_type() {
+    let source = r#"def Video: Subject
+def Hoge
+def Base: Tag { hoge: Hoge }
+def Huga: Base
+def Piyo: Base
+let video: Video
+let value: Hoge
+let a: Huga + Piyo
+stmt video has a { Base::hoge: value }"#;
+    let ast = parse("inherited-qualified-property.mt", source).unwrap();
+    let model = resolve(&ast, "inherited-qualified-property.mt", source).unwrap();
+    let base = model.types.iter().find(|ty| ty.name == "Base").unwrap();
+    assert_eq!(model.statements[0].properties[0].property.owner, base.id);
+}
