@@ -302,24 +302,6 @@ impl Parser<'_> {
         self.parse_property_atom()
     }
 
-    fn parse_property_or(&mut self) -> Result<PropertyPredicate, FrontendError> {
-        let mut predicate = self.parse_property_and()?;
-        while self.consume_simple(|kind| matches!(kind, TokenKind::OrOr)).is_some() {
-            let right = self.parse_property_and()?;
-            predicate = PropertyPredicate::Or(Box::new(predicate), Box::new(right));
-        }
-        Ok(predicate)
-    }
-
-    fn parse_property_and(&mut self) -> Result<PropertyPredicate, FrontendError> {
-        let mut predicate = self.parse_property_atom()?;
-        while self.consume_simple(|kind| matches!(kind, TokenKind::AndAnd)).is_some() {
-            let right = self.parse_property_atom()?;
-            predicate = PropertyPredicate::And(Box::new(predicate), Box::new(right));
-        }
-        Ok(predicate)
-    }
-
     fn parse_property_atom(&mut self) -> Result<PropertyPredicate, FrontendError> {
         if let Some(Token { kind: TokenKind::Identifier(name), .. }) = self.current().cloned()
             && name == "none"
