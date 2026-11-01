@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-use miette::{IntoDiagnostic, Report, miette};
+use miette::{Report, miette};
 
 use crate::{
     analyze, load_project_with_source, resolve,
