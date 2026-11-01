@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
-use crate::numeric::NumericValue;\nuse crate::resolved::{
+use crate::numeric::NumericValue;
+use crate::resolved::{
     Instance, InstanceId, PropertyId, PropertyValue, ResolvedModel, Statement, TypeId, Value,
 };
 
