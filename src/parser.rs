@@ -583,7 +583,7 @@ stmt video_a has cat {
         ).unwrap();
         assert!(matches!(&program.items[0], Item::Import(import) if import.path == "chemistry.mt" && import.alias == "chem"));
         let Item::InstanceDefinition(instance) = &program.items[1] else { panic!("expected instance"); };
-        assert_eq!(instance.instance_type.terms, ["chem::Molecule"]);
+        assert_eq!(instance.instance_type.terms, vec!["chem::Molecule".to_owned()]);
         let Item::ShowQuery(query) = &program.items[2] else { panic!("expected query"); };
         assert!(matches!(&query.expression, QueryExpr::Type { name, .. } if name == "chem::Molecule"));
     }
