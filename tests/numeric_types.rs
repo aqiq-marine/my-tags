@@ -44,6 +44,11 @@ stmt experiment has measurement {
   as_int: -7,
   as_nat: 0
 }
+stmt experiment has measurement {
+  as_float: 3,
+  as_int: 3,
+  as_nat: 3
+}
 "#;
     let model = resolve_source(source);
 
@@ -56,6 +61,11 @@ stmt experiment has measurement {
     assert!(matches!(second[0].value, Value::Number(NumericValue::Float(value)) if value == -2.0));
     assert!(matches!(second[1].value, Value::Number(NumericValue::Int(-7))));
     assert!(matches!(second[2].value, Value::Number(NumericValue::Nat(0))));
+
+    let third = &model.statements[2].properties;
+    assert!(matches!(third[0].value, Value::Number(NumericValue::Float(value)) if value == 3.0));
+    assert!(matches!(third[1].value, Value::Number(NumericValue::Int(3))));
+    assert!(matches!(third[2].value, Value::Number(NumericValue::Nat(3))));
 }
 
 #[test]
@@ -218,6 +228,27 @@ stmt c has metric { score: 3 }
             "operator {operator} should compare mixed Nat/Float values"
         );
     }
+}
+
+#[test]
+fn query_dsl_compares_numeric_properties_inside_nested_anonymous_values() {
+    let source = r#"
+def Experiment: Subject
+def Measurement { value: Float }
+def Record: Tag { measurement: Measurement }
+let lower: Experiment
+let higher: Experiment
+let record: Record
+stmt lower has record { measurement: Measurement { value: 1.5 } }
+stmt higher has record { measurement: Measurement { value: 2.5 } }
+#show query Record {
+  measurement: Measurement {
+    value: (> 2)
+  }
+}
+"#;
+
+    assert_eq!(query_subject_names(source), HashSet::from(["higher".to_owned()]));
 }
 
 #[test]
