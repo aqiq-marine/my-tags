@@ -63,7 +63,7 @@ pub fn run() -> miette::Result<()> {
                 if let Item::ShowQuery(query) = item {
                     query_count += 1;
                     let mut ids: Vec<_> = query_dsl::evaluate(&model, &query.expression)
-                        .map_err(|error| miette!(error.to_string()))?
+                        .map_err(|error| miette!("{}", error))?
                         .into_iter()
                         .collect();
                     ids.sort_unstable();
