@@ -278,33 +278,35 @@ impl Parser<'_> {
     }
 
     fn parse_query_predicate_atom(&mut self) -> Result<PropertyPredicate, FrontendError> {
-        if let Some(Token { kind: TokenKind::Identifier(type_name), span: type_span }) = self.current().cloned()
-            && matches!(self.tokens.get(self.cursor + 1).map(|token| &token.kind), Some(TokenKind::LeftBrace))
-        {
-            self.cursor += 1;
-            self.expect_simple(|kind| matches!(kind, TokenKind::LeftBrace), "{")?;
-            let mut conditions = Vec::new();
-            while !self.check(|kind| matches!(kind, TokenKind::RightBrace)) {
-                if self.current().is_none() {
-                    return Err(self.error_here("unterminated nested query block; expected }"));
+        if matches!(self.current().map(|token| &token.kind), Some(TokenKind::Identifier(_))) {
+            let saved = self.cursor;
+            let (type_name, type_span) = self.expect_identifier()?;
+            if self.check(|kind| matches!(kind, TokenKind::LeftBrace)) {
+                self.expect_simple(|kind| matches!(kind, TokenKind::LeftBrace), "{")?;
+                let mut conditions = Vec::new();
+                while !self.check(|kind| matches!(kind, TokenKind::RightBrace)) {
+                    if self.current().is_none() {
+                        return Err(self.error_here("unterminated nested query block; expected }"));
+                    }
+                    let (property, property_span) = self.expect_local_identifier()?;
+                    self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
+                    let predicate = self.parse_query_predicate_or()?;
+                    let end = self.previous_span().unwrap_or(property_span);
+                    conditions.push(PropertyCondition {
+                        name: property,
+                        predicate,
+                        span: Span { start: property_span.start, end: end.end },
+                    });
+                    self.consume_simple(|kind| matches!(kind, TokenKind::Comma));
                 }
-                let (property, property_span) = self.expect_local_identifier()?;
-                self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
-                let predicate = self.parse_query_predicate_or()?;
-                let end = self.previous_span().unwrap_or(property_span);
-                conditions.push(PropertyCondition {
-                    name: property,
-                    predicate,
-                    span: Span { start: property_span.start, end: end.end },
+                let end = self.expect_simple(|kind| matches!(kind, TokenKind::RightBrace), "}")?.span;
+                return Ok(PropertyPredicate::Anonymous {
+                    type_name,
+                    conditions,
+                    span: Span { start: type_span.start, end: end.end },
                 });
-                self.consume_simple(|kind| matches!(kind, TokenKind::Comma));
             }
-            let end = self.expect_simple(|kind| matches!(kind, TokenKind::RightBrace), "}")?.span;
-            return Ok(PropertyPredicate::Anonymous {
-                type_name,
-                conditions,
-                span: Span { start: type_span.start, end: end.end },
-            });
+            self.cursor = saved;
         }
 
         if let Some(Token { kind: TokenKind::Identifier(name), span }) = self.current().cloned()
