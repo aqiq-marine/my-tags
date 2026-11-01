@@ -30,7 +30,7 @@ def Video
 ```text
 def Animal {
   appearance: Appearance
-  weight: Number
+  weight: Float
 }
 ```
 
@@ -73,7 +73,9 @@ let white: Color
 let black: Color
 
 let cat: Tag + Animal
-def Video: Subject\n\nlet video_a: Video
+def Video: Subject
+
+let video_a: Video
 ```
 
 - `let` declares a named instance, not a bare symbol.
@@ -237,7 +239,7 @@ The v0.1 semantic analyzer should check at least:
 - Statement tags satisfy `Tag`.
 - Statement properties are declared on the tag type or inherited.
 - Each statement property occurs no more than once.
-- Property values satisfy the declared range, including subtype compatibility.
+- Property values satisfy the declared range, including subtype compatibility and numeric widening.
 
 Forward references are permitted, so validation should not depend on declaration order.
 
