@@ -157,7 +157,7 @@ impl Parser<'_> {
             if self.current().is_none() {
                 return Err(self.error_here("unterminated property block; expected }"));
             }
-            let (name, name_span) = self.expect_local_identifier()?;
+            let (name, name_span) = self.expect_identifier()?;
             self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
             let value = self.parse_value_expression()?;
             let end = value.span();
@@ -244,7 +244,7 @@ impl Parser<'_> {
             if self.current().is_none() {
                 return Err(self.error_here("unterminated query type block; expected }"));
             }
-            let (property, property_span) = self.expect_local_identifier()?;
+            let (property, property_span) = self.expect_identifier()?;
             self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
             let predicate = self.parse_query_predicate_or()?;
             let end = self.previous_span().unwrap_or(property_span);
@@ -290,7 +290,7 @@ impl Parser<'_> {
                     if self.current().is_none() {
                         return Err(self.error_here("unterminated nested query block; expected }"));
                     }
-                    let (property, property_span) = self.expect_local_identifier()?;
+                    let (property, property_span) = self.expect_identifier()?;
                     self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
                     let predicate = self.parse_query_predicate_or()?;
                     let end = self.previous_span().unwrap_or(property_span);
