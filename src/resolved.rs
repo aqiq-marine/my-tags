@@ -9,7 +9,7 @@ pub struct StatementId(pub u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct PropertyId { pub owner: TypeId, pub index: u32 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ResolvedModel { pub types: Vec<Type>, pub instances: Vec<Instance>, pub statements: Vec<Statement> }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Type { pub id: TypeId, pub name: String, pub parent: Option<TypeId>, pub properties: Vec<PropertyDefinition>, pub builtin: bool }
@@ -24,7 +24,7 @@ pub struct PropertyValue { pub property: PropertyId, pub value: Value }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Value {
     Reference(InstanceId),
-    Number(f64),
+    Number(i64),
     Anonymous { type_id: TypeId, properties: Vec<PropertyValue> },
 }
 
