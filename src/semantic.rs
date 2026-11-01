@@ -190,7 +190,7 @@ fn check_query_predicate(
             }
             QueryValue::Reference { name: value_name, span: value_span } => {
                 if !matches!(op, CompareOp::Eq | CompareOp::Ne) {
-                    errors.push(issue(name, source, "ordering comparisons require a Number value", *span));
+                    errors.push(issue(name, source, "ordering comparisons require a numeric value", *span));
                 }
                 match instances.get(value_name) {
                     Some(instance) if compatible(&instance.instance_type, range, types) => {}
@@ -368,7 +368,7 @@ stmt video has white";
     #[test]
     fn rejects_duplicate_statement_properties() {
         let source = "def Video
-def Animal { color: Number }
+def Animal { color: Int }
 let tag: Tag + Animal
 let video: Video
 stmt video has tag { color: 1, color: 2 }";
