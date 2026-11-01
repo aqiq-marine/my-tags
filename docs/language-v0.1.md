@@ -183,7 +183,7 @@ For example, `SolidColor` is valid for a property whose range is `Appearance`, b
 The following is an initial grammar sketch, not a complete lexer/parser specification.
 
 ```ebnf
-program             = { declaration | statement } ;
+program             = { declaration | statement | show_query } ;
 
 declaration         = type_definition | instance_definition ;
 
@@ -329,7 +329,30 @@ The operators are evaluated over sets of subject instances:
 
 Precedence, from highest to lowest, is unary `!`, then `&` and `-` (left associative), then `|`. Parentheses override precedence. The complement universe is the set of instances that occur as subjects of at least one statement in the current source model.
 
-### 12.3 Executing display directives
+### 12.3 Query grammar
+
+The implemented query grammar is summarized below:
+
+```ebnf
+show_query       = "#" "show" "query" query_expr ;
+query_expr       = query_intersection { "|" query_intersection } ;
+query_intersection
+                 = query_unary { ("&" | "-") query_unary } ;
+query_unary      = "!" query_unary | query_primary ;
+query_primary    = type_query | "(" query_expr ")" ;
+type_query       = identifier "{" { property_condition } "}" ;
+property_condition
+                 = identifier ":" property_predicate ;
+property_predicate
+                 = property_and { "||" property_and } ;
+property_and     = property_atom { "&&" property_atom } ;
+property_atom    = "none" | "(" comparison value ")" ;
+comparison       = "==" | "!=" | ">" | ">=" | "<" | "<=" ;
+```
+
+Whitespace and line breaks separate adjacent property conditions; commas are optional separators. Comparisons are parenthesized so that the property predicate grammar remains unambiguous.
+
+### 12.4 Executing display directives
 
 `my-tags check file.mt` parses and type-checks queries without evaluating them. `my-tags run file.mt` evaluates each `#show query` directive in source order and prints the matching subject instance names.
 
