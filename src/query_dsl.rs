@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::fmt;
 
 use crate::{
-    ast::{CompareOp, PropertyCondition, PropertyPredicate, QueryExpr, QueryValue},
+    ast::{CompareOp, PropertyCondition, PropertyPredicate, QueryExpr, QueryValue},\n    numeric::NumericValue,
     resolved::{InstanceId, PropertyId, ResolvedModel, TypeId, Value},
 };
 
@@ -156,14 +156,15 @@ fn evaluate_predicate(
     }
 }
 
-fn compare_number(op: CompareOp, actual: i64, expected: i64) -> bool {
+fn compare_number(op: CompareOp, actual: NumericValue, expected: NumericValue) -> bool {
+    let Some(ordering) = actual.partial_cmp_numeric(expected) else { return false; };
     match op {
-        CompareOp::Eq => actual == expected,
-        CompareOp::Ne => actual != expected,
-        CompareOp::Gt => actual > expected,
-        CompareOp::Ge => actual >= expected,
-        CompareOp::Lt => actual < expected,
-        CompareOp::Le => actual <= expected,
+        CompareOp::Eq => ordering.is_eq(),
+        CompareOp::Ne => !ordering.is_eq(),
+        CompareOp::Gt => ordering.is_gt(),
+        CompareOp::Ge => ordering.is_ge(),
+        CompareOp::Lt => ordering.is_lt(),
+        CompareOp::Le => ordering.is_le(),
     }
 }
 
