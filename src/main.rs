@@ -1,3 +1,3 @@
-fn main() {
-    println!("Hello, world!");
+fn main() -> miette::Result<()> {
+    my_tags::cli::run()
 }
