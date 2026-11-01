@@ -309,3 +309,96 @@ fn rewrite_predicate(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{fs, path::Path};
+
+    use tempfile::tempdir;
+
+    use super::load_project;
+    use crate::{resolve, ast::Item};
+
+    fn write(path: &Path, source: &str) {
+        fs::write(path, source).unwrap();
+    }
+
+    #[test]
+    fn loads_transitive_modules_and_resolves_alias_qualified_symbols() {
+        let dir = tempdir().unwrap();
+        write(&dir.path().join("chemistry.mt"), "def Atom\nlet atom: Tag + Atom\n");
+        write(
+            &dir.path().join("main.mt"),
+            "import \"chemistry.mt\" as chem\ndef Video: Subject\nlet video: Video\nstmt video has chem::atom\n#show query chem::Atom {}",
+        );
+
+        let program = load_project(dir.path().join("main.mt")).unwrap();
+        assert_eq!(program.items.iter().filter(|item| matches!(item, Item::Import(_))).count(), 0);
+        let source = fs::read_to_string(dir.path().join("main.mt")).unwrap();
+        let model = resolve(&program, "main.mt", &source).unwrap();
+        assert!(model.types.iter().any(|ty| ty.name == "chemistry.mt::Atom"));
+        assert!(model.instances.iter().any(|instance| instance.name == "chemistry.mt::atom"));
+        assert_eq!(model.statements.len(), 1);
+    }
+
+    #[test]
+    fn aliases_are_module_local_and_are_not_reexported() {
+        let dir = tempdir().unwrap();
+        write(&dir.path().join("chemistry.mt"), "def Atom\n");
+        write(
+            &dir.path().join("catalog.mt"),
+            "import \"chemistry.mt\" as chem\ndef Sample { atom: chem::Atom }\n",
+        );
+        write(
+            &dir.path().join("main.mt"),
+            "import \"catalog.mt\" as catalog\n#show query catalog::Sample {}",
+        );
+        let program = load_project(dir.path().join("main.mt")).unwrap();
+        assert!(program.items.iter().any(|item| {
+            matches!(item, Item::ShowQuery(_))
+        }));
+
+        write(
+            &dir.path().join("main.mt"),
+            "import \"catalog.mt\" as catalog\n#show query chem::Atom {}",
+        );
+        let error = load_project(dir.path().join("main.mt")).unwrap_err();
+        assert!(error.to_string().contains("unknown import alias chem"));
+    }
+
+    #[test]
+    fn rejects_duplicate_aliases() {
+        let dir = tempdir().unwrap();
+        write(&dir.path().join("a.mt"), "def A\n");
+        write(&dir.path().join("b.mt"), "def B\n");
+        write(
+            &dir.path().join("main.mt"),
+            "import \"a.mt\" as lib\nimport \"b.mt\" as lib\n",
+        );
+        let error = load_project(dir.path().join("main.mt")).unwrap_err();
+        assert!(error.to_string().contains("declares import alias lib more than once"));
+    }
+
+    #[test]
+    fn rejects_duplicate_imports_of_the_same_file() {
+        let dir = tempdir().unwrap();
+        write(&dir.path().join("a.mt"), "def A\n");
+        write(
+            &dir.path().join("main.mt"),
+            "import \"a.mt\" as first\nimport \"./a.mt\" as second\n",
+        );
+        let error = load_project(dir.path().join("main.mt")).unwrap_err();
+        assert!(error.to_string().contains("already imported"));
+    }
+
+    #[test]
+    fn rejects_cyclic_imports_with_the_dependency_chain() {
+        let dir = tempdir().unwrap();
+        write(&dir.path().join("a.mt"), "import \"b.mt\" as b\n");
+        write(&dir.path().join("b.mt"), "import \"a.mt\" as a\n");
+        let error = load_project(dir.path().join("a.mt")).unwrap_err();
+        assert!(error.to_string().contains("cyclic import detected"));
+        assert!(error.to_string().contains("a.mt"));
+        assert!(error.to_string().contains("b.mt"));
+    }
+}
