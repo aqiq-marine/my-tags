@@ -29,8 +29,8 @@ impl Parser<'_> {
     fn parse_program(mut self) -> Result<Program, FrontendError> {
         let mut items = Vec::new();
 
-        while let Some(token) = self.current() {
-            let item = match &token.kind {
+        while let Some(kind) = self.current().map(|token| token.kind.clone()) {
+            let item = match kind {
                 TokenKind::Def => Item::TypeDefinition(self.parse_type_definition()?),
                 TokenKind::Let => Item::InstanceDefinition(self.parse_instance_definition()?),
                 TokenKind::Stmt => Item::Statement(self.parse_statement()?),
