@@ -171,3 +171,78 @@ stmt video has tag { yield: 90 }
     let errors = my_tags::analyze(&program, "invalid-query.mt", source).unwrap_err();
     assert!(errors.iter().any(|error| error.to_string().contains("not defined on query type")));
 }
+
+
+#[test]
+fn matches_nested_anonymous_property_values() {
+    let source = r#"
+def Video
+def Color
+def Piyo { bar: Color }
+def DetailedPiyo { note: Number }: Piyo
+def Hoge: Tag { huga: Piyo }
+let baz: Color
+let other: Color
+let heck: Hoge
+let video_a: Video
+let video_b: Video
+let video_c: Video
+stmt video_a has heck { huga: DetailedPiyo { bar: baz note: 1 } }
+stmt video_b has heck { huga: Piyo { bar: other } }
+stmt video_c has heck { huga: Piyo {} }
+#show query Hoge {
+  huga: Piyo {
+    bar: baz
+  }
+}
+"#;
+    let program = parse("nested-query.mt", source).unwrap();
+    my_tags::analyze(&program, "nested-query.mt", source).unwrap();
+    let model = resolve(&program, "nested-query.mt", source).unwrap();
+    let Item::ShowQuery(query) = program.items.last().unwrap() else { panic!("expected query"); };
+    assert_eq!(
+        names(query_dsl::evaluate(&model, &query.expression).unwrap(), &model),
+        HashSet::from(["video_a".to_owned()])
+    );
+}
+
+#[test]
+fn matches_absence_inside_nested_anonymous_values() {
+    let source = r#"
+def Video
+def Color
+def Piyo { bar: Color }
+def Hoge: Tag { huga: Piyo }
+let heck: Hoge
+let video_a: Video
+let video_b: Video
+stmt video_a has heck { huga: Piyo {} }
+stmt video_b has heck { huga: Piyo { bar: missing_color } }
+let missing_color: Color
+#show query Hoge { huga: Piyo { bar: none } }
+"#;
+    let program = parse("nested-none.mt", source).unwrap();
+    let model = resolve(&program, "nested-none.mt", source).unwrap();
+    let Item::ShowQuery(query) = program.items.last().unwrap() else { panic!("expected query"); };
+    assert_eq!(
+        names(query_dsl::evaluate(&model, &query.expression).unwrap(), &model),
+        HashSet::from(["video_a".to_owned()])
+    );
+}
+
+#[test]
+fn rejects_unknown_property_inside_nested_query_value() {
+    let source = r#"
+def Video
+def Color
+def Piyo { bar: Color }
+def Hoge: Tag { huga: Piyo }
+let heck: Hoge
+let video: Video
+stmt video has heck { huga: Piyo {} }
+#show query Hoge { huga: Piyo { missing: none } }
+"#;
+    let program = parse("nested-invalid.mt", source).unwrap();
+    let errors = my_tags::analyze(&program, "nested-invalid.mt", source).unwrap_err();
+    assert!(errors.iter().any(|error| error.to_string().contains("missing is not defined on query type Piyo")));
+}
