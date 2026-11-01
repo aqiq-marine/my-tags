@@ -2,41 +2,29 @@
 
 A language and data model for describing videos with structured, ontology-aware tags.
 
-The design separates three concerns:
+The v0.1 language separates three concerns:
 
-1. **Ontology** — concepts, sets, membership, and properties.
-2. **Data** — structured tag values attached to videos.
-3. **Query** — searches over concepts and property constraints.
+1. **Types** — concepts and properties, declared with `def`.
+2. **Instances** — named values of types, declared with `let`.
+3. **Statements** — independent tag assertions about videos, declared with `stmt`.
 
-## Initial design direction
+## Design principles
 
-- `Tag` and `Number` are the only planned primitive roots.
-- `Tag` is the root of elements eligible to be used as video tags. It does **not** imply that every leaf in the ontology is a tag.
-- Other conceptual domains are built from named sets and `in` relationships.
-- Properties are reusable named relations with declared value domains.
-- Concepts may inherit and specialize properties.
-- Missing properties are allowed initially; completeness checks belong to a linter.
-- Ontology, data, and query files have separate responsibilities.
-- The first version focuses on video-to-tag annotation. Relations between videos or arbitrary entities are out of scope.
+- `Tag` marks instances eligible to be used as tags; not every instance is a tag.
+- `Number` is a special primitive type.
+- Types may use single inheritance and intersection expressions (`+`).
+- Properties are optional and have at most one value per statement.
+- Statements are independent; repeated subject/tag pairs are retained separately.
+- v0.1 annotates whole videos identified by stable IDs.
+- Data is stored in source files and searched through a programmatic API; there is no query DSL in v0.1.
 
-These are design directions, not a finalized grammar or formal semantics. See [the design overview](docs/overview.md) and [ADR 0001](docs/adr/0001-initial-language-model.md).
+## Documentation
 
-## Possible project layout
-
-```text
-project/
-├── ontology/
-│   ├── core.tag
-│   ├── animals.tag
-│   └── motions.tag
-├── data/
-│   └── videos.data
-└── queries/
-    └── animals.query
-```
-
-File extensions and syntax are provisional.
+- [MVP Scope](docs/mvp-scope.md)
+- [Language Specification v0.1](docs/language-v0.1.md)
+- [Design Overview](docs/overview.md)
+- [ADR 0001: Initial Language Model](docs/adr/0001-initial-language-model.md)
 
 ## Status
 
-This repository currently records the language design. The grammar, parser, evaluator, and storage model have not yet been specified.
+The repository records the agreed v0.1 design. Implementation has not yet started.
