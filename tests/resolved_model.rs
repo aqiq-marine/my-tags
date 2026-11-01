@@ -1,6 +1,7 @@
 use my_tags::{parse, resolve, storage};
 use my_tags::resolved::{PropertyId, Value};
-use my_tags::query::{PropertyPath, PropertyPathError};\nuse my_tags::query_dsl;
+use my_tags::query::{PropertyPath, PropertyPathError};
+use my_tags::query_dsl;
 
 const SOURCE: &str = r#"
 def Video: Subject
