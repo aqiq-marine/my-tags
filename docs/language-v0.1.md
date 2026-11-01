@@ -235,10 +235,10 @@ The parser/AST distinguishes type property declarations from statement property 
 
 A source file is one module. Imports are top-level declarations and use an explicit alias:
 
-\`\`\`text
+```text
 import "chemistry.mt" as chemistry
 import "biology.mt" as biology
-\`\`\`
+```
 
 The path is resolved relative to the importing file. Paths are local filesystem paths; URL and package-registry imports are not supported. The alias must be a simple identifier and is visible only in the importing module. An import does not re-export the imported module or its aliases.
 
@@ -246,7 +246,7 @@ The path is resolved relative to the importing file. Paths are local filesystem 
 
 Definitions are local to their declaring module. A module may refer to its own types and instances by unqualified names. A symbol from an imported module must be qualified with the import alias and the `::` separator:
 
-\`\`\`text
+```text
 import "chemistry.mt" as chemistry
 
 def Sample {
@@ -254,8 +254,9 @@ def Sample {
 }
 
 let sample: Sample
+let sample_atom: chemistry::Atom
 stmt video has chemistry::sample_atom
-\`\`\`
+```
 
 Property names remain local to the declaring type and are not module-qualified. Declaration names and property names must be unqualified. Import aliases are not implicitly available through transitive imports.
 
