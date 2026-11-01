@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::resolved::{
+use crate::numeric::NumericValue;\nuse crate::resolved::{
     Instance, InstanceId, PropertyId, PropertyValue, ResolvedModel, Statement, TypeId, Value,
 };
 
@@ -99,14 +99,15 @@ fn value_at_path<'a>(values: &'a [PropertyValue], path: &[PropertyId]) -> Option
 enum NumberComparison { Eq, Ne, Gt, Ge, Lt, Le }
 
 impl NumberComparison {
-    fn matches(self, actual: i64, expected: i64) -> bool {
+    fn matches(self, actual: NumericValue, expected: NumericValue) -> bool {
+        let Some(ordering) = actual.partial_cmp_numeric(expected) else { return false; };
         match self {
-            Self::Eq => actual == expected,
-            Self::Ne => actual != expected,
-            Self::Gt => actual > expected,
-            Self::Ge => actual >= expected,
-            Self::Lt => actual < expected,
-            Self::Le => actual <= expected,
+            Self::Eq => ordering.is_eq(),
+            Self::Ne => !ordering.is_eq(),
+            Self::Gt => ordering.is_gt(),
+            Self::Ge => ordering.is_ge(),
+            Self::Lt => ordering.is_lt(),
+            Self::Le => ordering.is_le(),
         }
     }
 }
@@ -173,45 +174,45 @@ impl<'a> Query<'a> {
         self
     }
 
-    pub fn where_property_number_eq(self, property: PropertyId, expected: i64) -> Self {
-        self.where_number(&PropertyPath::new(property), expected, NumberComparison::Eq)
+    pub fn where_property_number_eq(self, property: PropertyId, expected: impl Into<NumericValue>) -> Self {
+        self.where_number(&PropertyPath::new(property), expected.into(), NumberComparison::Eq)
     }
-    pub fn where_property_number_ne(self, property: PropertyId, expected: i64) -> Self {
-        self.where_number(&PropertyPath::new(property), expected, NumberComparison::Ne)
+    pub fn where_property_number_ne(self, property: PropertyId, expected: impl Into<NumericValue>) -> Self {
+        self.where_number(&PropertyPath::new(property), expected.into(), NumberComparison::Ne)
     }
-    pub fn where_property_number_gt(self, property: PropertyId, expected: i64) -> Self {
-        self.where_number(&PropertyPath::new(property), expected, NumberComparison::Gt)
+    pub fn where_property_number_gt(self, property: PropertyId, expected: impl Into<NumericValue>) -> Self {
+        self.where_number(&PropertyPath::new(property), expected.into(), NumberComparison::Gt)
     }
-    pub fn where_property_number_ge(self, property: PropertyId, expected: i64) -> Self {
-        self.where_number(&PropertyPath::new(property), expected, NumberComparison::Ge)
+    pub fn where_property_number_ge(self, property: PropertyId, expected: impl Into<NumericValue>) -> Self {
+        self.where_number(&PropertyPath::new(property), expected.into(), NumberComparison::Ge)
     }
-    pub fn where_property_number_lt(self, property: PropertyId, expected: i64) -> Self {
-        self.where_number(&PropertyPath::new(property), expected, NumberComparison::Lt)
+    pub fn where_property_number_lt(self, property: PropertyId, expected: impl Into<NumericValue>) -> Self {
+        self.where_number(&PropertyPath::new(property), expected.into(), NumberComparison::Lt)
     }
-    pub fn where_property_number_le(self, property: PropertyId, expected: i64) -> Self {
-        self.where_number(&PropertyPath::new(property), expected, NumberComparison::Le)
-    }
-
-    pub fn where_property_path_number_eq(self, path: &PropertyPath, expected: i64) -> Self {
-        self.where_number(path, expected, NumberComparison::Eq)
-    }
-    pub fn where_property_path_number_ne(self, path: &PropertyPath, expected: i64) -> Self {
-        self.where_number(path, expected, NumberComparison::Ne)
-    }
-    pub fn where_property_path_number_gt(self, path: &PropertyPath, expected: i64) -> Self {
-        self.where_number(path, expected, NumberComparison::Gt)
-    }
-    pub fn where_property_path_number_ge(self, path: &PropertyPath, expected: i64) -> Self {
-        self.where_number(path, expected, NumberComparison::Ge)
-    }
-    pub fn where_property_path_number_lt(self, path: &PropertyPath, expected: i64) -> Self {
-        self.where_number(path, expected, NumberComparison::Lt)
-    }
-    pub fn where_property_path_number_le(self, path: &PropertyPath, expected: i64) -> Self {
-        self.where_number(path, expected, NumberComparison::Le)
+    pub fn where_property_number_le(self, property: PropertyId, expected: impl Into<NumericValue>) -> Self {
+        self.where_number(&PropertyPath::new(property), expected.into(), NumberComparison::Le)
     }
 
-    fn where_number(mut self, path: &PropertyPath, expected: i64, comparison: NumberComparison) -> Self {
+    pub fn where_property_path_number_eq(self, path: &PropertyPath, expected: impl Into<NumericValue>) -> Self {
+        self.where_number(path, expected.into(), NumberComparison::Eq)
+    }
+    pub fn where_property_path_number_ne(self, path: &PropertyPath, expected: impl Into<NumericValue>) -> Self {
+        self.where_number(path, expected.into(), NumberComparison::Ne)
+    }
+    pub fn where_property_path_number_gt(self, path: &PropertyPath, expected: impl Into<NumericValue>) -> Self {
+        self.where_number(path, expected.into(), NumberComparison::Gt)
+    }
+    pub fn where_property_path_number_ge(self, path: &PropertyPath, expected: impl Into<NumericValue>) -> Self {
+        self.where_number(path, expected.into(), NumberComparison::Ge)
+    }
+    pub fn where_property_path_number_lt(self, path: &PropertyPath, expected: impl Into<NumericValue>) -> Self {
+        self.where_number(path, expected.into(), NumberComparison::Lt)
+    }
+    pub fn where_property_path_number_le(self, path: &PropertyPath, expected: impl Into<NumericValue>) -> Self {
+        self.where_number(path, expected.into(), NumberComparison::Le)
+    }
+
+    fn where_number(mut self, path: &PropertyPath, expected: NumericValue, comparison: NumberComparison) -> Self {
         self.statements.retain(|statement| {
             matches!(
                 value_at_path(&statement.properties, &path.properties),
