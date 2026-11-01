@@ -51,9 +51,8 @@ A query can combine numeric filtering with a recursively nested anonymous-value 
 ~~~text
 #show query Reaction {
   yield: (>= 80)
-} & Hoge {
-  huga: SolventInfo {
-    solvent: methanol
+  condition: ReactionCondition {
+    system: Solution { solvent: methanol }
   }
 }
 ~~~
