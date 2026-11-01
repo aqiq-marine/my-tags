@@ -150,9 +150,9 @@ fn resolve_value(
                 NumericValue::Float(value.as_f64())
             } else if expected_names.contains(&"Int") {
                 match value {
-                    NumericValue::Nat(number) => NumericValue::Int(*number as i64),
+                    NumericValue::Nat(number) => NumericValue::Int(i128::from(*number)),
                     NumericValue::Int(number) => NumericValue::Int(*number),
-                    NumericValue::Float(number) => NumericValue::Int(*number as i64),
+                    NumericValue::Float(number) => NumericValue::Int(*number as i128),
                 }
             } else if expected_names.contains(&"Nat") {
                 match value {
