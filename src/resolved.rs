@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};\n\nuse crate::numeric::NumericValue;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct TypeId(pub u32);
@@ -24,7 +24,7 @@ pub struct PropertyValue { pub property: PropertyId, pub value: Value }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Value {
     Reference(InstanceId),
-    Number(i64),
+    Number(NumericValue),
     Anonymous { type_id: TypeId, properties: Vec<PropertyValue> },
 }
 
