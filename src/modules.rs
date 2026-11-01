@@ -347,12 +347,28 @@ fn rewrite_item(
     Ok(())
 }
 
+fn rewrite_property_name(
+    raw: &str,
+    module: &str,
+    aliases: &HashMap<String, String>,
+) -> Result<String, ModuleLoadError> {
+    let Some((owner, property)) = raw.rsplit_once("::") else {
+        return Ok(raw.to_owned());
+    };
+    if property.is_empty() {
+        return Err(ModuleLoadError::InvalidQualifiedName(raw.to_owned()));
+    }
+    let owner = resolve_name(owner, module, aliases, true)?;
+    Ok(format!("{owner}::{property}"))
+}
+
 fn rewrite_assignments(
     assignments: &mut [PropertyAssignment],
     module: &str,
     aliases: &HashMap<String, String>,
 ) -> Result<(), ModuleLoadError> {
     for assignment in assignments {
+        assignment.name = rewrite_property_name(&assignment.name, module, aliases)?;
         match &mut assignment.value {
             ValueExpression::Reference { name, .. } => {
                 *name = resolve_name(name, module, aliases, false)?;
@@ -394,6 +410,7 @@ fn rewrite_conditions(
     aliases: &HashMap<String, String>,
 ) -> Result<(), ModuleLoadError> {
     for condition in conditions {
+        condition.name = rewrite_property_name(&condition.name, module, aliases)?;
         rewrite_predicate(&mut condition.predicate, module, aliases)?;
     }
     Ok(())
@@ -518,5 +535,40 @@ mod tests {
         assert!(error.to_string().contains("cyclic import detected"));
         assert!(error.to_string().contains("a.mt"));
         assert!(error.to_string().contains("b.mt"));
+    }
+
+    #[test]
+    fn resolves_import_qualified_property_selectors() {
+        let dir = tempdir().unwrap();
+        write(
+            &dir.path().join("chemistry.mt"),
+            "def Hoge\ndef Huga: Tag { hoge: Hoge }\nlet value: Hoge\n",
+        );
+        write(
+            &dir.path().join("main.mt"),
+            r#"import "chemistry.mt" as chem
+def Video: Subject
+def LocalValue
+def Piyo: Tag { hoge: LocalValue }
+let video: Video
+let local_value: LocalValue
+let a: chem::Huga + Piyo
+stmt video has a {
+  chem::Huga::hoge: chem::value
+  Piyo::hoge: local_value
+}
+#show query chem::Huga { chem::Huga::hoge: chem::value }"#,
+        );
+
+        let program = load_project(dir.path().join("main.mt")).unwrap();
+        let source = fs::read_to_string(dir.path().join("main.mt")).unwrap();
+        let model = resolve(&program, "main.mt", &source).unwrap();
+        assert_eq!(model.statements[0].properties.len(), 2);
+        assert!(model.statements[0].properties.iter().any(|property| {
+            model.type_by_id(property.property.owner).is_some_and(|ty| ty.name == "chemistry.mt::Huga")
+        }));
+        assert!(model.statements[0].properties.iter().any(|property| {
+            model.type_by_id(property.property.owner).is_some_and(|ty| ty.name == "main.mt::Piyo")
+        }));
     }
 }

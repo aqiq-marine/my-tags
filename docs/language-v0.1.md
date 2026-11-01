@@ -209,7 +209,7 @@ statement           = "stmt" qualified_name "has" qualified_name
 
 statement_property_block
                     = "{"
-                      { identifier ":" value_expression }
+                      { property_name ":" value_expression }
                       "}" ;
 
 value_expression    = qualified_name
@@ -223,6 +223,9 @@ float_literal       = digit { digit } "." digit { digit } [ exponent ]
                     | "." digit { digit } [ exponent ]
                     | digit { digit } exponent ;
 exponent            = ( "e" | "E" ) [ "+" | "-" ] digit { digit } ;
+
+property_name       = identifier | qualified_property_name ;
+qualified_property_name = qualified_name "::" identifier ;
 
 identifier          = letter { letter | digit | "_" } ;
 ```
@@ -260,7 +263,7 @@ let sample_atom: Tag + chemistry::Atom
 stmt video has sample_atom
 ```
 
-Property names remain local to the declaring type and are not module-qualified. Declaration names and property names must be unqualified. Import aliases are not implicitly available through transitive imports.
+Property declarations and declaration names must use unqualified local identifiers. At use sites, a property may be qualified by its declaring type: `Huga::hoge` for a local type, or `chemistry::Huga::hoge` for an imported type. The qualifier must identify an ancestor of the type being annotated, and the property must be declared directly on that type. This allows distinct properties with the same local name to be selected explicitly. Unqualified property references remain supported when they resolve uniquely. Import aliases are not implicitly available through transitive imports.
 
 ### 9.3 Loading and identity
 
@@ -348,7 +351,7 @@ A query is an expression that evaluates to a set of statement subjects (instance
 
 A type-query block selects subjects having at least one statement whose tag instance has the named type (or a subtype). Conditions inside one block are evaluated against the **same statement** and are implicitly ANDed. If a subject has multiple statements, it is selected when at least one matching statement satisfies every condition in that block. Separate type-query blocks are evaluated independently and their subject sets are combined by set operators.
 
-A property named in a query must be declared on the queried type or one of its ancestors. An unknown property is a semantic error, not a query that silently returns an empty set.
+A property named in a query must be declared on the queried type or one of its ancestors. If multiple declarations with the same local name are visible, qualify the property with its declaring type (for example, `Huga::hoge`). An unknown or ambiguous property is a semantic error, not a query that silently returns an empty set.
 
 ### 13.1 Property predicates
 
@@ -410,7 +413,7 @@ query_unary      = "!" query_unary | query_primary ;
 query_primary    = type_query | "(" query_expr ")" ;
 type_query       = qualified_name "{" { property_condition } "}" ;
 property_condition
-                 = identifier ":" property_predicate ;
+                 = property_name ":" property_predicate ;
 property_predicate
                  = property_and { "||" property_and } ;
 property_and     = property_atom { "&&" property_atom } ;

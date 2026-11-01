@@ -139,7 +139,7 @@ fn check_query_conditions(
     errors: &mut Vec<FrontendError>,
 ) {
     for condition in conditions {
-        let Some(range) = find_property(owner_type, &condition.name, types) else {
+        let Some(range) = find_query_property(owner_type, &condition.name, types) else {
             errors.push(issue(
                 name, source,
                 format!("property {} is not defined on query type {owner_type}", condition.name),
@@ -251,6 +251,49 @@ fn compatible(actual: &TypeExpression, expected: &TypeExpression, types: &IndexM
     expected.terms.iter().all(|need| actual.terms.iter().any(|have| subtype(have, need, types)))
 }
 
+fn find_direct_property<'a>(type_name: &str, property: &str, types: &'a IndexMap<String, TypeDefinition>) -> Option<&'a TypeExpression> {
+    types.get(type_name)?
+        .properties
+        .iter()
+        .find(|item| item.name == property)
+        .map(|item| &item.value_type)
+}
+
+fn find_query_property<'a>(
+    owner_type: &str,
+    selector: &str,
+    types: &'a IndexMap<String, TypeDefinition>,
+) -> Option<&'a TypeExpression> {
+    if let Some((declaring_type, property)) = selector.rsplit_once("::") {
+        if !subtype(owner_type, declaring_type, types) {
+            return None;
+        }
+        find_direct_property(declaring_type, property, types)
+    } else {
+        find_property(owner_type, selector, types)
+    }
+}
+
+fn find_assignment_properties<'a>(
+    owner: &TypeExpression,
+    selector: &str,
+    types: &'a IndexMap<String, TypeDefinition>,
+) -> Option<Vec<&'a TypeExpression>> {
+    if let Some((declaring_type, property)) = selector.rsplit_once("::") {
+        if !known_type(declaring_type, types)
+            || !owner.terms.iter().any(|term| subtype(term, declaring_type, types))
+        {
+            return None;
+        }
+        find_direct_property(declaring_type, property, types).map(|range| vec![range])
+    } else {
+        let ranges: Vec<_> = owner.terms.iter()
+            .filter_map(|term| find_property(term, selector, types))
+            .collect();
+        (!ranges.is_empty()).then_some(ranges)
+    }
+}
+
 fn find_property<'a>(type_name: &str, property: &str, types: &'a IndexMap<String, TypeDefinition>) -> Option<&'a TypeExpression> {
     let mut current = Some(type_name);
     let mut visited = HashSet::new();
@@ -280,11 +323,10 @@ fn check_assignments(
             errors.push(issue(name, source, format!("property {} occurs more than once", assignment.name), assignment.span));
             continue;
         }
-        let ranges: Vec<_> = owner.terms.iter().filter_map(|term| find_property(term, &assignment.name, types)).collect();
-        if ranges.is_empty() {
+        let Some(ranges) = find_assignment_properties(owner, &assignment.name, types) else {
             errors.push(issue(name, source, format!("property {} is not defined on this type", assignment.name), assignment.span));
             continue;
-        }
+        };
         check_value(&assignment.value, &ranges, types, instances, name, source, errors);
     }
 }

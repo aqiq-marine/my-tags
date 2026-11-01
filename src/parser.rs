@@ -157,7 +157,7 @@ impl Parser<'_> {
             if self.current().is_none() {
                 return Err(self.error_here("unterminated property block; expected }"));
             }
-            let (name, name_span) = self.expect_local_identifier()?;
+            let (name, name_span) = self.expect_identifier()?;
             self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
             let value = self.parse_value_expression()?;
             let end = value.span();
@@ -244,7 +244,7 @@ impl Parser<'_> {
             if self.current().is_none() {
                 return Err(self.error_here("unterminated query type block; expected }"));
             }
-            let (property, property_span) = self.expect_local_identifier()?;
+            let (property, property_span) = self.expect_identifier()?;
             self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
             let predicate = self.parse_query_predicate_or()?;
             let end = self.previous_span().unwrap_or(property_span);
@@ -290,7 +290,7 @@ impl Parser<'_> {
                     if self.current().is_none() {
                         return Err(self.error_here("unterminated nested query block; expected }"));
                     }
-                    let (property, property_span) = self.expect_local_identifier()?;
+                    let (property, property_span) = self.expect_identifier()?;
                     self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
                     let predicate = self.parse_query_predicate_or()?;
                     let end = self.previous_span().unwrap_or(property_span);
@@ -601,3 +601,21 @@ stmt video_a has cat {
     }
 
 }
+
+
+    #[test]
+    fn parses_qualified_property_use_sites_but_not_declarations() {
+        let source = r#"def Hoge
+def Huga { hoge: Hoge }
+def Piyo { hoge: Hoge }
+let value: Hoge
+let a: Huga + Piyo
+stmt subject has a { Huga::hoge: value }
+#show query Huga { Huga::hoge: value }"#;
+        let program = parse("qualified-property.mt", source).unwrap();
+        let Item::Statement(statement) = &program.items[5] else { panic!("expected statement"); };
+        assert_eq!(statement.properties[0].name, "Huga::hoge");
+
+        let error = parse("bad-property-declaration.mt", "def Hoge\ndef Huga { Other::hoge: Hoge }").unwrap_err();
+        assert!(error.to_string().contains("unqualified identifier"));
+    }

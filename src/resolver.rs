@@ -94,7 +94,32 @@ fn resolve_type_expression(expr: &TypeExpression, ids: &HashMap<String, TypeId>)
     expr.terms.iter().map(|name| ids[name]).collect()
 }
 
-fn find_property(model: &ResolvedModel, owner_types: &[TypeId], name: &str) -> Result<PropertyId, ResolveError> {
+fn find_property(
+    model: &ResolvedModel,
+    owner_types: &[TypeId],
+    type_ids: &HashMap<String, TypeId>,
+    name: &str,
+) -> Result<PropertyId, ResolveError> {
+    if let Some((declaring_type, property_name)) = name.rsplit_once("::") {
+        let declaring_id = type_ids.get(declaring_type).copied()
+            .ok_or_else(|| ResolveError::MissingSymbol(name.to_owned()))?;
+        let is_ancestor = owner_types.iter().any(|owner| {
+            let mut current = Some(*owner);
+            while let Some(type_id) = current {
+                if type_id == declaring_id { return true; }
+                current = model.type_by_id(type_id).and_then(|ty| ty.parent);
+            }
+            false
+        });
+        if !is_ancestor {
+            return Err(ResolveError::MissingSymbol(name.to_owned()));
+        }
+        return model.type_by_id(declaring_id)
+            .and_then(|ty| ty.properties.iter().find(|property| property.name == property_name))
+            .map(|property| property.id)
+            .ok_or_else(|| ResolveError::MissingSymbol(name.to_owned()));
+    }
+
     let mut found = Vec::new();
     for owner in owner_types {
         let mut current = Some(*owner);
@@ -124,7 +149,7 @@ fn resolve_assignments(
     instance_ids: &HashMap<String, InstanceId>,
 ) -> Result<Vec<PropertyValue>, ResolveError> {
     assignments.iter().map(|assignment| {
-        let property = find_property(model, owner_types, &assignment.name)?;
+        let property = find_property(model, owner_types, type_ids, &assignment.name)?;
         let definition = model.type_by_id(property.owner)
             .and_then(|ty| ty.properties.iter().find(|candidate| candidate.id == property))
             .expect("validated property definition");
