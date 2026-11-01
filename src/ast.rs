@@ -58,7 +58,7 @@ pub struct PropertyAssignment {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueExpression {
     Reference { name: String, span: Span },
-    Number { value: f64, span: Span },
+    Number { value: i64, span: Span },
     AnonymousInstance {
         type_name: String,
         properties: Vec<PropertyAssignment>,
