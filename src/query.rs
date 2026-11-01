@@ -65,8 +65,9 @@ impl PropertyPath {
             let definition = property_definition(model, from)
                 .ok_or(PropertyPathError::UnknownProperty(from))?;
             let valid = definition.value_type.iter().any(|type_id| {
-                property_is_on_type(model, *type_id, to)
-            });
+                model.is_subtype_of(to.owner, *type_id)
+                    || model.is_subtype_of(*type_id, to.owner)
+            }) && property_definition(model, to).is_some();
             if !valid {
                 return Err(PropertyPathError::InvalidTransition { from, to });
             }
