@@ -20,7 +20,7 @@ pub fn analyze(program: &Program, name: &str, source: &str) -> Result<(), Vec<Fr
     for item in &program.items {
         match item {
             Item::TypeDefinition(def) => {
-                if def.name == "Tag" || def.name == "Number" {
+                if is_builtin_type(&def.name) {
                     errors.push(issue(name, source, "built-in type cannot be redefined", def.span));
                 } else if types.contains_key(&def.name) {
                     errors.push(issue(name, source, format!("duplicate type {}", def.name), def.span));
@@ -80,8 +80,8 @@ pub fn analyze(program: &Program, name: &str, source: &str) -> Result<(), Vec<Fr
     for item in &program.items {
         if let Item::Statement(stmt) = item {
             match instances.get(&stmt.subject) {
-                Some(subject) if satisfies(&subject.instance_type, "Video", &types) => {}
-                Some(_) => errors.push(issue(name, source, "statement subject must have type Video", stmt.span)),
+                Some(subject) if satisfies(&subject.instance_type, "Subject", &types) => {}
+                Some(_) => errors.push(issue(name, source, "statement subject must satisfy Subject", stmt.span)),
                 None => errors.push(issue(name, source, format!("unknown subject {}", stmt.subject), stmt.span)),
             }
             match instances.get(&stmt.tag) {
@@ -177,9 +177,15 @@ fn check_query_predicate(
             }
         }
         PropertyPredicate::Compare { op, value, span } => match value {
-            QueryValue::Number { .. } => {
-                if range.terms.len() != 1 || range.terms[0] != "Number" {
-                    errors.push(issue(name, source, "numeric comparison requires a Number property", *span));
+            QueryValue::Number { value, .. } => {
+                let actual = TypeExpression {
+                    terms: vec![value.type_name().to_owned()],
+                    span: *span,
+                };
+                if !range.terms.iter().all(|term| subtype(term, "Float", types)) {
+                    errors.push(issue(name, source, "numeric comparison requires a numeric property", *span));
+                } else if !compatible(&actual, range, types) {
+                    errors.push(issue(name, source, format!("numeric literal of type {} is incompatible with this property", value.type_name()), *span));
                 }
             }
             QueryValue::Reference { name: value_name, span: value_span } => {
@@ -196,8 +202,20 @@ fn check_query_predicate(
     }
 }
 
+fn is_builtin_type(name: &str) -> bool {
+    matches!(name, "Subject" | "Tag" | "Float" | "Int" | "Nat")
+}
+
+fn builtin_parent(name: &str) -> Option<&'static str> {
+    match name {
+        "Nat" => Some("Int"),
+        "Int" => Some("Float"),
+        _ => None,
+    }
+}
+
 fn known_type(name: &str, types: &IndexMap<String, TypeDefinition>) -> bool {
-    name == "Tag" || name == "Number" || types.contains_key(name)
+    is_builtin_type(name) || types.contains_key(name)
 }
 
 fn check_type_expr(expr: &TypeExpression, types: &IndexMap<String, TypeDefinition>, name: &str, source: &str, errors: &mut Vec<FrontendError>) {
@@ -218,7 +236,9 @@ fn subtype(candidate: &str, expected: &str, types: &IndexMap<String, TypeDefinit
     while let Some(name) = current {
         if name == expected { return true; }
         if !visited.insert(name) { return false; }
-        current = types.get(name).and_then(|def| def.parent.as_deref());
+        current = types.get(name)
+            .and_then(|def| def.parent.as_deref())
+            .or_else(|| builtin_parent(name));
     }
     false
 }
@@ -284,9 +304,15 @@ fn check_value(
             Some(_) => errors.push(issue(name, source, format!("instance {value_name} has an incompatible type"), *span)),
             None => errors.push(issue(name, source, format!("unknown instance {value_name}"), *span)),
         },
-        ValueExpression::Number { span, .. } => {
-            if ranges.iter().any(|range| range.terms.len() != 1 || range.terms[0] != "Number") {
-                errors.push(issue(name, source, "numeric literal requires a Number property", *span));
+        ValueExpression::Number { value, span } => {
+            let actual = TypeExpression {
+                terms: vec![value.type_name().to_owned()],
+                span: *span,
+            };
+            if ranges.iter().any(|range| !range.terms.iter().all(|term| subtype(term, "Float", types))) {
+                errors.push(issue(name, source, "numeric literal requires a numeric property", *span));
+            } else if ranges.iter().any(|range| !compatible(&actual, range, types)) {
+                errors.push(issue(name, source, format!("numeric literal of type {} is incompatible with this property", value.type_name()), *span));
             }
         }
         ValueExpression::AnonymousInstance { type_name, properties, span } => {
