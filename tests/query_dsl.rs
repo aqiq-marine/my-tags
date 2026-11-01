@@ -71,7 +71,7 @@ fn evaluates_intersection_and_property_or_on_subjects() {
     };
     assert_eq!(
         names(query_dsl::evaluate(&model, &query.expression).unwrap(), &model),
-        HashSet::from(["video_a".to_owned()])
+        HashSet::from(["video_a".to_owned(), "video_b".to_owned()])
     );
 }
 
@@ -133,6 +133,27 @@ stmt b has tag { score: 1 }
     assert_eq!(
         names(query_dsl::evaluate(&model, &query.expression).unwrap(), &model),
         HashSet::from(["a".to_owned()])
+    );
+}
+
+#[test]
+fn complement_selects_subjects_outside_the_inner_set() {
+    let source = r#"
+def Video
+def Reaction: Tag { score: Number }
+let tag: Reaction
+let a: Video
+let b: Video
+stmt a has tag { score: 10 }
+stmt b has tag { score: 1 }
+#show query !Reaction { score: (>= 5) }
+"#;
+    let program = parse("not.mt", source).unwrap();
+    let model = resolve(&program, "not.mt", source).unwrap();
+    let Item::ShowQuery(query) = program.items.last().unwrap() else { panic!("expected query"); };
+    assert_eq!(
+        names(query_dsl::evaluate(&model, &query.expression).unwrap(), &model),
+        HashSet::from(["b".to_owned()])
     );
 }
 
