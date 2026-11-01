@@ -493,7 +493,7 @@ stmt video_a has cat {
 
         let error = parse(
             "number.mt",
-            "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: 9223372036854775808 }",
+            "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: -170141183460469231731687303715884105729 }",
         ).unwrap_err();
         assert!(error.to_string().contains("i128 range"));
     }
