@@ -112,7 +112,7 @@ v0.1 is complete when an example project can:
 5. Preserve optional properties, with at most one value for each property in a statement.
 6. Query through the programmatic API using tag and property conditions.
 7. Parse, type-check, and execute a documented #show query example, including a nested anonymous-value pattern.
-8. Return matching subject instance IDs for the documented example.
+8. Return matching subject instance IDs for the documented example.\n9. Load a project split across multiple modules, resolve qualified references, and reject import cycles and duplicate aliases.
 
 ## Related specification
 
