@@ -340,7 +340,12 @@ mod tests {
         let model = resolve(&program, "main.mt", &source).unwrap();
         assert!(model.types.iter().any(|ty| ty.name == "chemistry.mt::Atom"));
         assert!(model.instances.iter().any(|instance| instance.name == "chemistry.mt::atom"));
-        assert_eq!(model.statements.len(), 1);\n        let query = program.items.iter().find_map(|item| {\n            if let Item::ShowQuery(query) = item { Some(query) } else { None }\n        }).unwrap();\n        let matches = crate::query_dsl::evaluate(&model, &query.expression).unwrap();\n        assert_eq!(matches.len(), 1);
+        assert_eq!(model.statements.len(), 1);
+        let query = program.items.iter().find_map(|item| {
+            if let Item::ShowQuery(query) = item { Some(query) } else { None }
+        }).unwrap();
+        let matches = crate::query_dsl::evaluate(&model, &query.expression).unwrap();
+        assert_eq!(matches.len(), 1);
     }
 
     #[test]
