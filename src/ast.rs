@@ -1,4 +1,4 @@
-use crate::lexer::Span;
+use crate::{lexer::Span, numeric::NumericValue};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
@@ -59,7 +59,7 @@ pub struct PropertyAssignment {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueExpression {
     Reference { name: String, span: Span },
-    Number { value: i64, span: Span },
+    Number { value: NumericValue, span: Span },
     AnonymousInstance {
         type_name: String,
         properties: Vec<PropertyAssignment>,
@@ -77,7 +77,6 @@ impl ValueExpression {
     }
 }
 
-/// A directive that evaluates a query and displays the resulting subject set.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Query {
     pub expression: QueryExpr,
@@ -86,11 +85,7 @@ pub struct Query {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum QueryExpr {
-    Type {
-        name: String,
-        conditions: Vec<PropertyCondition>,
-        span: Span,
-    },
+    Type { name: String, conditions: Vec<PropertyCondition>, span: Span },
     And(Box<QueryExpr>, Box<QueryExpr>),
     Or(Box<QueryExpr>, Box<QueryExpr>),
     Difference(Box<QueryExpr>, Box<QueryExpr>),
@@ -105,31 +100,19 @@ pub struct PropertyCondition {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CompareOp {
-    Eq,
-    Ne,
-    Gt,
-    Ge,
-    Lt,
-    Le,
-}
+pub enum CompareOp { Eq, Ne, Gt, Ge, Lt, Le }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum QueryValue {
     Reference { name: String, span: Span },
-    Number { value: i64, span: Span },
+    Number { value: NumericValue, span: Span },
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum PropertyPredicate {
     None,
     Compare { op: CompareOp, value: QueryValue, span: Span },
-    /// Match an anonymous value of the given type and recursively match its properties.
-    Anonymous {
-        type_name: String,
-        conditions: Vec<PropertyCondition>,
-        span: Span,
-    },
+    Anonymous { type_name: String, conditions: Vec<PropertyCondition>, span: Span },
     And(Box<PropertyPredicate>, Box<PropertyPredicate>),
     Or(Box<PropertyPredicate>, Box<PropertyPredicate>),
 }

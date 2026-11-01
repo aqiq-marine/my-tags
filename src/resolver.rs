@@ -4,6 +4,7 @@ use crate::{
     analyze,
     ast::{Item, Program, PropertyAssignment, TypeExpression, ValueExpression},
     diagnostic::FrontendError,
+    numeric::NumericValue,
     resolved::{Instance, InstanceId, PropertyDefinition, PropertyId, PropertyValue, ResolvedModel, Statement, StatementId, Type, TypeId, Value},
 };
 
@@ -28,10 +29,25 @@ pub fn resolve(program: &Program, source_name: &str, source: &str) -> Result<Res
     analyze(program, source_name, source).map_err(ResolveError::Validation)?;
     let mut model = ResolvedModel { types: Vec::new(), instances: Vec::new(), statements: Vec::new() };
     let mut type_ids = HashMap::new();
-    for (name, id) in [("Tag", TypeId(0)), ("Number", TypeId(1))] {
+
+    let builtins = [
+        ("Subject", None),
+        ("Tag", None),
+        ("Float", None),
+        ("Int", Some("Float")),
+        ("Nat", Some("Int")),
+    ];
+    for (name, _) in builtins {
+        let id = TypeId(model.types.len() as u32);
         type_ids.insert(name.to_owned(), id);
         model.types.push(Type { id, name: name.into(), parent: None, properties: Vec::new(), builtin: true });
     }
+    for (name, parent) in builtins {
+        if let Some(parent) = parent {
+            model.types[type_ids[name].0 as usize].parent = Some(type_ids[parent]);
+        }
+    }
+
     for item in &program.items {
         if let Item::TypeDefinition(def) = item {
             let id = TypeId(model.types.len() as u32);
@@ -52,6 +68,7 @@ pub fn resolve(program: &Program, source_name: &str, source: &str) -> Result<Res
             model.types[id.0 as usize].properties = properties;
         }
     }
+
     let mut instance_ids = HashMap::new();
     for item in &program.items {
         if let Item::InstanceDefinition(def) = item {
@@ -76,6 +93,7 @@ pub fn resolve(program: &Program, source_name: &str, source: &str) -> Result<Res
 fn resolve_type_expression(expr: &TypeExpression, ids: &HashMap<String, TypeId>) -> Vec<TypeId> {
     expr.terms.iter().map(|name| ids[name]).collect()
 }
+
 fn find_property(model: &ResolvedModel, owner_types: &[TypeId], name: &str) -> Result<PropertyId, ResolveError> {
     let mut found = Vec::new();
     for owner in owner_types {
@@ -97,17 +115,55 @@ fn find_property(model: &ResolvedModel, owner_types: &[TypeId], name: &str) -> R
         _ => Err(ResolveError::AmbiguousProperty(name.to_owned())),
     }
 }
-fn resolve_assignments(assignments: &[PropertyAssignment], owner_types: &[TypeId], model: &ResolvedModel, type_ids: &HashMap<String, TypeId>, instance_ids: &HashMap<String, InstanceId>) -> Result<Vec<PropertyValue>, ResolveError> {
+
+fn resolve_assignments(
+    assignments: &[PropertyAssignment],
+    owner_types: &[TypeId],
+    model: &ResolvedModel,
+    type_ids: &HashMap<String, TypeId>,
+    instance_ids: &HashMap<String, InstanceId>,
+) -> Result<Vec<PropertyValue>, ResolveError> {
     assignments.iter().map(|assignment| {
         let property = find_property(model, owner_types, &assignment.name)?;
-        let value = resolve_value(&assignment.value, model, type_ids, instance_ids)?;
+        let definition = model.type_by_id(property.owner)
+            .and_then(|ty| ty.properties.iter().find(|candidate| candidate.id == property))
+            .expect("validated property definition");
+        let value = resolve_value(&assignment.value, &definition.value_type, model, type_ids, instance_ids)?;
         Ok(PropertyValue { property, value })
     }).collect()
 }
-fn resolve_value(expression: &ValueExpression, model: &ResolvedModel, type_ids: &HashMap<String, TypeId>, instance_ids: &HashMap<String, InstanceId>) -> Result<Value, ResolveError> {
+
+fn resolve_value(
+    expression: &ValueExpression,
+    expected_types: &[TypeId],
+    model: &ResolvedModel,
+    type_ids: &HashMap<String, TypeId>,
+    instance_ids: &HashMap<String, InstanceId>,
+) -> Result<Value, ResolveError> {
     match expression {
         ValueExpression::Reference { name, .. } => instance_ids.get(name).copied().map(Value::Reference).ok_or_else(|| ResolveError::MissingSymbol(name.clone())),
-        ValueExpression::Number { value, .. } => Ok(Value::Number(*value)),
+        ValueExpression::Number { value, .. } => {
+            let expected_names: Vec<_> = expected_types.iter()
+                .filter_map(|id| model.type_by_id(*id).map(|ty| ty.name.as_str()))
+                .collect();
+            let value = if expected_names.contains(&"Nat") {
+                match value {
+                    NumericValue::Nat(number) => NumericValue::Nat(*number),
+                    _ => unreachable!("semantic validation rejects non-Nat values for Nat properties"),
+                }
+            } else if expected_names.contains(&"Int") {
+                match value {
+                    NumericValue::Nat(number) => NumericValue::Int(i128::from(*number)),
+                    NumericValue::Int(number) => NumericValue::Int(*number),
+                    NumericValue::Float(_) => unreachable!("semantic validation rejects Float-to-Int narrowing"),
+                }
+            } else if expected_names.contains(&"Float") {
+                NumericValue::Float(value.as_f64())
+            } else {
+                *value
+            };
+            Ok(Value::Number(value))
+        }
         ValueExpression::AnonymousInstance { type_name, properties, .. } => {
             let type_id = type_ids.get(type_name).copied().ok_or_else(|| ResolveError::MissingSymbol(type_name.clone()))?;
             let nested = resolve_assignments(properties, &[type_id], model, type_ids, instance_ids)?;

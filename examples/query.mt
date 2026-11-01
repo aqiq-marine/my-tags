@@ -1,6 +1,6 @@
 // Query DSL example: type filters, property predicates, and set operations.
 
-def Video
+def Video: Subject
 def ChemObject: Video
 def System
 def Solvent
@@ -9,15 +9,16 @@ def Solution {
 }: System
 def Neat: System
 def ReactionCondition {
-  temperature: Number,
+  temperature: Float,
+  concentration: Float,
   system: System
 }
 def Reaction: Tag {
-  yield: Number
+  yield: Float
   condition: ReactionCondition
 }
 def Asymmetric: Reaction {
-  ee: Number
+  ee: Float
 }
 
 let neat: Neat
@@ -31,18 +32,18 @@ let reaction_c: ChemObject
 stmt reaction_a has heck {
   yield: 90
   ee: 80
-  condition: ReactionCondition { system: Solution { solvent: methanol } }
+  condition: ReactionCondition { temperature: 25.0, concentration: 0.125, system: Solution { solvent: methanol } }
 }
 
 stmt reaction_b has heck {
   yield: 70
   ee: 95
-  condition: ReactionCondition { system: Solution { solvent: ethanol } }
+  condition: ReactionCondition { temperature: 30, concentration: 0.25, system: Solution { solvent: ethanol } }
 }
 
 stmt reaction_c has heck {
   ee: 90
-  condition: ReactionCondition { system: Solution { solvent: methanol } }
+  condition: ReactionCondition { temperature: 25, concentration: 0.125, system: Solution { solvent: methanol } }
 }
 
 #show query Reaction {

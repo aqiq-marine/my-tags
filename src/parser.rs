@@ -6,6 +6,7 @@ use crate::{
     },
     diagnostic::FrontendError,
     lexer::{lex, Span, Token, TokenKind},
+    numeric::NumericValue,
 };
 
 pub fn parse(source_name: &str, source: &str) -> Result<Program, FrontendError> {
@@ -150,7 +151,7 @@ impl Parser<'_> {
     }
 
     fn parse_value_expression(&mut self) -> Result<ValueExpression, FrontendError> {
-        if let Some((value, span)) = self.parse_signed_integer()? {
+        if let Some((value, span)) = self.parse_signed_number()? {
             return Ok(ValueExpression::Number { value, span });
         }
         let (name, name_span) = self.expect_identifier()?;
@@ -320,7 +321,7 @@ impl Parser<'_> {
             _ => return Err(self.error_here("expected a comparison operator")),
         };
         self.cursor += 1;
-        let value = if let Some((value, span)) = self.parse_signed_integer()? {
+        let value = if let Some((value, span)) = self.parse_signed_number()? {
             QueryValue::Number { value, span }
         } else {
             let (name, span) = self.expect_identifier()?;
@@ -332,25 +333,41 @@ impl Parser<'_> {
         })
     }
 
-    fn parse_signed_integer(&mut self) -> Result<Option<(i64, Span)>, FrontendError> {
+    fn parse_signed_number(&mut self) -> Result<Option<(NumericValue, Span)>, FrontendError> {
         let minus = self.consume_simple(|kind| matches!(kind, TokenKind::Minus));
-        if let Some(Token { kind: TokenKind::Number(raw), span }) = self.current().cloned() {
+        if let Some(Token { kind: TokenKind::Float(raw), span }) = self.current().cloned() {
             self.cursor += 1;
-            let magnitude = raw.parse::<u64>().map_err(|_| {
-                self.error_at("integer literal is outside the i64 range", span)
+            let mut value = raw.parse::<f64>().map_err(|_| {
+                self.error_at("invalid floating-point literal", span)
+            })?;
+            if minus.is_some() { value = -value; }
+            if !value.is_finite() {
+                return Err(self.error_at("Float literals must be finite", span));
+            }
+            return Ok(Some((NumericValue::Float(value), Span {
+                start: minus.map_or(span.start, |token| token.span.start),
+                end: span.end,
+            })));
+        }
+        if let Some(Token { kind: TokenKind::Integer(raw), span }) = self.current().cloned() {
+            self.cursor += 1;
+            let magnitude = raw.parse::<u128>().map_err(|_| {
+                self.error_at("integer literal is outside the supported range", span)
             })?;
             let value = if minus.is_some() {
-                if magnitude == (i64::MAX as u64) + 1 {
-                    i64::MIN
+                if magnitude == (i128::MAX as u128) + 1 {
+                    NumericValue::Int(i128::MIN)
                 } else {
-                    i64::try_from(magnitude).ok().and_then(i64::checked_neg).ok_or_else(|| {
-                        self.error_at("integer literal is outside the i64 range", span)
-                    })?
+                    let positive = i128::try_from(magnitude).map_err(|_| {
+                        self.error_at("negative integer literal is outside the i128 range", span)
+                    })?;
+                    NumericValue::Int(-positive)
                 }
             } else {
-                i64::try_from(magnitude).map_err(|_| {
-                    self.error_at("integer literal is outside the i64 range", span)
-                })?
+                let natural = u64::try_from(magnitude).map_err(|_| {
+                    self.error_at("Nat literal is outside the u64 range", span)
+                })?;
+                NumericValue::Nat(natural)
             };
             return Ok(Some((value, Span {
                 start: minus.map_or(span.start, |token| token.span.start),
@@ -358,7 +375,7 @@ impl Parser<'_> {
             })));
         }
         if let Some(token) = minus {
-            return Err(self.error_at("expected an integer after -", token.span));
+            return Err(self.error_at("expected a numeric literal after -", token.span));
         }
         Ok(None)
     }
@@ -462,23 +479,32 @@ stmt video_a has cat {
             "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: -25 }",
         ).unwrap();
         let Item::Statement(statement) = program.items.last().unwrap() else { panic!("expected statement"); };
-        assert!(matches!(statement.properties[0].value, ValueExpression::Number { value, .. } if value == -25));
+        assert!(matches!(statement.properties[0].value, ValueExpression::Number { value, .. } if value == NumericValue::Int(-25)));
     }
 
     #[test]
-    fn parses_i64_minimum_and_rejects_overflow() {
+    fn parses_i128_minimum_and_rejects_overflow() {
         let minimum = parse(
             "number.mt",
-            "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: -9223372036854775808 }",
+            "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: -170141183460469231731687303715884105728 }",
         ).unwrap();
         let Item::Statement(statement) = minimum.items.last().unwrap() else { panic!("expected statement"); };
-        assert!(matches!(statement.properties[0].value, ValueExpression::Number { value: i64::MIN, .. }));
+        assert!(matches!(statement.properties[0].value, ValueExpression::Number { value: NumericValue::Int(i128::MIN), .. }));
 
         let error = parse(
             "number.mt",
-            "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: 9223372036854775808 }",
+            "def Video\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: -170141183460469231731687303715884105729 }",
         ).unwrap_err();
-        assert!(error.to_string().contains("i64 range"));
+        assert!(error.to_string().contains("i128 range"));
+    }
+
+    #[test]
+    fn rejects_non_finite_float_literals() {
+        let error = parse(
+            "float.mt",
+            "def Video: Subject\ndef Taggable: Tag\nlet video: Video\nlet tag: Taggable\nstmt video has tag { score: 1e999 }",
+        ).unwrap_err();
+        assert!(error.to_string().contains("must be finite"));
     }
 
     #[test]
@@ -497,13 +523,13 @@ stmt video_a has cat {
 
     #[test]
     fn accepts_parent_before_or_after_property_block() {
-        assert!(parse("type.mt", "def Child: Parent { value: Number }").is_ok());
-        assert!(parse("type.mt", "def Child { value: Number }: Parent").is_ok());
+        assert!(parse("type.mt", "def Child: Parent { value: Int }").is_ok());
+        assert!(parse("type.mt", "def Child { value: Int }: Parent").is_ok());
     }
 
     #[test]
     fn reports_unclosed_blocks() {
-        let error = parse("bad.mt", "def Color { value: Number").unwrap_err();
+        let error = parse("bad.mt", "def Color { value: Int").unwrap_err();
         assert!(error.to_string().contains("unterminated"));
     }
 }
