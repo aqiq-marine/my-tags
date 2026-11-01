@@ -47,6 +47,15 @@ Run the query example:
 cargo run -- run examples/query.mt
 ~~~
 
+Validate and run a multi-file project:
+
+~~~sh
+cargo run -- check examples/modules/main.mt
+cargo run -- run examples/modules/main.mt
+~~~
+
+The entry file imports `chemistry.mt` as `chem`; symbols from that module are referenced as `chem::Reaction` and `chem::reaction`.
+
 A query can combine numeric filtering with a recursively nested anonymous-value pattern:
 
 ~~~text
