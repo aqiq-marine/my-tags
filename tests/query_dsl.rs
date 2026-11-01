@@ -4,13 +4,13 @@ use my_tags::{parse, query_dsl, resolve};
 use my_tags::ast::Item;
 
 const SOURCE: &str = r#"
-def Video
+def Video: Subject
 def Piyo
 def Reaction: Tag {
-  yield: Number
+  yield: Int
 }
 def Asymmetric: Reaction {
-  ee: Number
+  ee: Int
 }
 def Hoge {
   huga: Piyo
@@ -78,9 +78,9 @@ fn evaluates_intersection_and_property_or_on_subjects() {
 #[test]
 fn all_property_conditions_must_match_the_same_statement() {
     let source = r#"
-def Video
-def Reaction: Tag { yield: Number }
-def Asymmetric: Reaction { ee: Number }
+def Video: Subject
+def Reaction: Tag { yield: Int }
+def Asymmetric: Reaction { ee: Int }
 let heck: Asymmetric
 let video: Video
 stmt video has heck { yield: 90 ee: 80 }
@@ -99,8 +99,8 @@ stmt video has heck { yield: 70 ee: 95 }
 #[test]
 fn none_matches_a_statement_without_the_property() {
     let source = r#"
-def Video
-def Reaction: Tag { yield: Number }
+def Video: Subject
+def Reaction: Tag { yield: Int }
 let heck: Reaction
 let video: Video
 stmt video has heck
@@ -118,8 +118,8 @@ stmt video has heck
 #[test]
 fn difference_and_not_use_the_subject_universe() {
     let source = r#"
-def Video
-def Reaction: Tag { score: Number }
+def Video: Subject
+def Reaction: Tag { score: Int }
 let tag: Reaction
 let a: Video
 let b: Video
@@ -139,8 +139,8 @@ stmt b has tag { score: 1 }
 #[test]
 fn complement_selects_subjects_outside_the_inner_set() {
     let source = r#"
-def Video
-def Reaction: Tag { score: Number }
+def Video: Subject
+def Reaction: Tag { score: Int }
 let tag: Reaction
 let a: Video
 let b: Video
@@ -160,8 +160,8 @@ stmt b has tag { score: 1 }
 #[test]
 fn rejects_undefined_property_in_query_type_block() {
     let source = r#"
-def Video
-def Reaction: Tag { yield: Number }
+def Video: Subject
+def Reaction: Tag { yield: Int }
 let tag: Reaction
 let video: Video
 stmt video has tag { yield: 90 }
@@ -176,10 +176,10 @@ stmt video has tag { yield: 90 }
 #[test]
 fn matches_nested_anonymous_property_values() {
     let source = r#"
-def Video
+def Video: Subject
 def Color
 def Piyo { bar: Color }
-def DetailedPiyo { note: Number }: Piyo
+def DetailedPiyo { note: Int }: Piyo
 def Hoge: Tag { huga: Piyo }
 let baz: Color
 let other: Color
@@ -209,7 +209,7 @@ stmt video_c has heck { huga: Piyo {} }
 #[test]
 fn matches_absence_inside_nested_anonymous_values() {
     let source = r#"
-def Video
+def Video: Subject
 def Color
 def Piyo { bar: Color }
 def Hoge: Tag { huga: Piyo }
@@ -233,7 +233,7 @@ let missing_color: Color
 #[test]
 fn rejects_unknown_property_inside_nested_query_value() {
     let source = r#"
-def Video
+def Video: Subject
 def Color
 def Piyo { bar: Color }
 def Hoge: Tag { huga: Piyo }
