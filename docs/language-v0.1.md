@@ -202,7 +202,7 @@ type_term           = qualified_name ;
 
 instance_definition = "let" identifier ":" type_expression ;
 
-qualified_name      = identifier { "::" identifier } ;
+qualified_name      = identifier [ "::" identifier ] ;
 
 statement           = "stmt" qualified_name "has" qualified_name
                       [ statement_property_block ] ;
@@ -227,7 +227,7 @@ exponent            = ( "e" | "E" ) [ "+" | "-" ] digit { digit } ;
 identifier          = letter { letter | digit | "_" } ;
 ```
 
-The parser/AST distinguishes type property declarations from statement property assignments, even though both use brace-delimited syntax. The implementation supports line comments, numeric literals, quoted import paths, and module-qualified names. See Section 10 for multi-file module semantics.
+The parser/AST distinguishes type property declarations from statement property assignments, even though both use brace-delimited syntax. The implementation supports line comments, numeric literals, quoted import paths, and module-qualified names. See Section 9 for multi-file module semantics.
 
 ## 9. Module imports and namespaces
 
@@ -253,9 +253,11 @@ def Sample {
   atom: chemistry::Atom
 }
 
+def Video: Subject
+let video: Video
 let sample: Sample
-let sample_atom: chemistry::Atom
-stmt video has chemistry::sample_atom
+let sample_atom: Tag + chemistry::Atom
+stmt video has sample_atom
 ```
 
 Property names remain local to the declaring type and are not module-qualified. Declaration names and property names must be unqualified. Import aliases are not implicitly available through transitive imports.
