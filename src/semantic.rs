@@ -40,10 +40,10 @@ pub fn analyze(program: &Program, name: &str, source: &str) -> Result<(), Vec<Fr
     }
 
     for def in types.values() {
-        if let Some(parent) = &def.parent {
-            if !known_type(parent, &types) {
-                errors.push(issue(name, source, format!("unknown parent type {parent}"), def.span));
-            }
+        if let Some(parent) = &def.parent
+            && !known_type(parent, &types)
+        {
+            errors.push(issue(name, source, format!("unknown parent type {parent}"), def.span));
         }
         let mut properties = HashSet::new();
         for property in &def.properties {
