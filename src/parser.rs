@@ -212,7 +212,9 @@ impl Parser<'_> {
     fn consume_simple(&mut self, predicate: impl FnOnce(&TokenKind) -> bool) -> Option<Token> {
         if self.check(predicate) {
             let token = self.tokens.get(self.cursor).cloned();
-            self.cursor += usize::from(token.is_some());
+            if token.is_some() {
+                self.cursor += 1;
+            }
             token
         } else {
             None
