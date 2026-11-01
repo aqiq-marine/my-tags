@@ -1,47 +1,54 @@
 // Query DSL example: type filters, property predicates, and set operations.
 
 def Video
+def ChemObject: Video
+def System
 def Solvent
-def SolventInfo { solvent: Solvent }
+def Solution {
+  solvent: Solvent
+}: System
+def Neat: System
+def ReactionCondition {
+  temperature: Number,
+  system: System
+}
 def Reaction: Tag {
   yield: Number
+  condition: ReactionCondition
 }
 def Asymmetric: Reaction {
   ee: Number
 }
-def Hoge {
-  huga: SolventInfo
-}
 
+let neat: Neat
 let methanol: Solvent
 let ethanol: Solvent
-let heck: Asymmetric + Hoge
-let video_a: Video
-let video_b: Video
-let video_c: Video
+let heck: Asymmetric
+let reaction_a: ChemObject
+let reaction_b: ChemObject
+let reaction_c: ChemObject
 
-stmt video_a has heck {
+stmt reaction_a has heck {
   yield: 90
   ee: 80
-  huga: SolventInfo { solvent: methanol }
+  condition: ReactionCondition { system: Solution { solvent: methanol } }
 }
 
-stmt video_b has heck {
+stmt reaction_b has heck {
   yield: 70
   ee: 95
-  huga: SolventInfo { solvent: ethanol }
+  condition: ReactionCondition { system: Solution { solvent: ethanol } }
 }
 
-stmt video_c has heck {
+stmt reaction_c has heck {
   ee: 90
-  huga: SolventInfo { solvent: methanol }
+  condition: ReactionCondition { system: Solution { solvent: methanol } }
 }
 
 #show query Reaction {
   yield: (>= 80)
-} & Hoge {
-  huga: SolventInfo {
-    solvent: methanol
+  condition: ReactionCondition {
+    system: Solution { solvent: methanol }
   }
 }
 
