@@ -347,12 +347,28 @@ fn rewrite_item(
     Ok(())
 }
 
+fn rewrite_property_name(
+    raw: &str,
+    module: &str,
+    aliases: &HashMap<String, String>,
+) -> Result<String, ModuleLoadError> {
+    let Some((owner, property)) = raw.rsplit_once("::") else {
+        return Ok(raw.to_owned());
+    };
+    if property.is_empty() {
+        return Err(ModuleLoadError::InvalidQualifiedName(raw.to_owned()));
+    }
+    let owner = resolve_name(owner, module, aliases, true)?;
+    Ok(format!("{owner}::{property}"))
+}
+
 fn rewrite_assignments(
     assignments: &mut [PropertyAssignment],
     module: &str,
     aliases: &HashMap<String, String>,
 ) -> Result<(), ModuleLoadError> {
     for assignment in assignments {
+        assignment.name = rewrite_property_name(&assignment.name, module, aliases)?;
         match &mut assignment.value {
             ValueExpression::Reference { name, .. } => {
                 *name = resolve_name(name, module, aliases, false)?;
@@ -394,6 +410,7 @@ fn rewrite_conditions(
     aliases: &HashMap<String, String>,
 ) -> Result<(), ModuleLoadError> {
     for condition in conditions {
+        condition.name = rewrite_property_name(&condition.name, module, aliases)?;
         rewrite_predicate(&mut condition.predicate, module, aliases)?;
     }
     Ok(())
