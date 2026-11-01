@@ -34,7 +34,7 @@ def Animal {
 }
 ```
 
-A property declaration has a name and a value type (range). The enclosing type is the property's domain.
+A property declaration has a name and a value type (range). The enclosing type is the property's domain. `Video` is an ordinary user-defined type; declare it in the ontology before using it as a statement subject.
 
 ### 2.3 Inheritance without additional properties
 
@@ -64,7 +64,7 @@ let cat: Tag + Animal
 
 This means the instance satisfies both `Tag` and `Animal`. An instance is eligible as a statement tag only if its type satisfies `Tag`. Merely being a property value, or belonging to an unrelated type, does not make an instance a tag.
 
-v0.1 supports intersection with `+`; union types and general set algebra are out of scope.
+v0.1 supports intersection with `+`; union types and general set algebra are out of scope. `Tag` and `Number` are built-in types and cannot be redefined. `Number` values may be written as integer or decimal literals in property assignments.
 
 ## 4. Instance definitions
 
@@ -173,7 +173,7 @@ For example, `SolidColor` is valid for a property whose range is `Appearance`, b
 
 ## 7. Video subject and tag constraints
 
-- A statement subject must be an instance satisfying the special `Video` type.
+- A statement subject must be an instance satisfying the user-defined `Video` type (or a subtype of it).
 - A statement tag must be an instance satisfying the special `Tag` type.
 - The subject is identified by its stable user-defined instance ID.
 - An annotation applies to the whole video. Time ranges and frame-level annotations are not part of v0.1.
@@ -209,12 +209,15 @@ statement_property_block
                       "}" ;
 
 value_expression    = identifier
+                    | number_literal
                     | identifier "{" statement_property_block "}" ;
+
+number_literal      = digit { digit } [ "." digit { digit } ] ;
 
 identifier          = letter { letter | digit | "_" } ;
 ```
 
-The parser/AST should distinguish type property declarations from statement property assignments, even though both use brace-delimited syntax. The grammar will need to be extended for comments, numeric literals, strings, source locations, and file/module handling.
+The parser/AST distinguishes type property declarations from statement property assignments, even though both use brace-delimited syntax. The initial implementation supports line comments and numeric literals; strings and file/module handling remain future work.
 
 ## 9. Semantic validation
 
@@ -225,7 +228,7 @@ The v0.1 semantic analyzer should check at least:
 - Unknown parent types and cyclic inheritance.
 - Invalid or duplicate property declarations.
 - Validity of type intersections.
-- Statement subjects are `Video` instances.
+- Statement subjects are instances of the user-defined `Video` type.
 - Statement tags satisfy `Tag`.
 - Statement properties are declared on the tag type or inherited.
 - Each statement property occurs no more than once.
