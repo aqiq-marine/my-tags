@@ -326,7 +326,7 @@ fn check_assignments(
         let Some(ranges) = find_assignment_properties(owner, &assignment.name, types) else {
             errors.push(issue(name, source, format!("property {} is not defined on this type", assignment.name), assignment.span));
             continue;
-        }
+        };
         check_value(&assignment.value, &ranges, types, instances, name, source, errors);
     }
 }
