@@ -17,6 +17,7 @@ let ethanol: Solvent
 let heck: Asymmetric + Hoge
 let video_a: Video
 let video_b: Video
+let video_c: Video
 
 stmt video_a has heck {
   yield: 90
