@@ -63,6 +63,33 @@ impl From<i64> for NumericValue {
 impl From<i128> for NumericValue {
     fn from(value: i128) -> Self { Self::Int(value) }
 }
+impl From<i8> for NumericValue {
+    fn from(value: i8) -> Self { Self::Int(i128::from(value)) }
+}
+impl From<i16> for NumericValue {
+    fn from(value: i16) -> Self { Self::Int(i128::from(value)) }
+}
+impl From<i32> for NumericValue {
+    fn from(value: i32) -> Self { Self::Int(i128::from(value)) }
+}
+impl From<isize> for NumericValue {
+    fn from(value: isize) -> Self { Self::Int(value as i128) }
+}
+impl From<u8> for NumericValue {
+    fn from(value: u8) -> Self { Self::Nat(u64::from(value)) }
+}
+impl From<u16> for NumericValue {
+    fn from(value: u16) -> Self { Self::Nat(u64::from(value)) }
+}
+impl From<u32> for NumericValue {
+    fn from(value: u32) -> Self { Self::Nat(u64::from(value)) }
+}
+impl From<usize> for NumericValue {
+    fn from(value: usize) -> Self { Self::Nat(value as u64) }
+}
+impl From<f32> for NumericValue {
+    fn from(value: f32) -> Self { Self::Float(f64::from(value)) }
+}
 impl From<u64> for NumericValue {
     fn from(value: u64) -> Self { Self::Nat(value) }
 }
