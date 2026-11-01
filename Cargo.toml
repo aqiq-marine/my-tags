@@ -2,7 +2,7 @@
 name = "my-tags"
 version = "0.1.0"
 edition = "2024"
-description = "A small language for ontology-aware video annotations"
+description = "A small language for typed structured annotations"
 license = "MIT"
 
 [dependencies]
