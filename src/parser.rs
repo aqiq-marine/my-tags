@@ -613,7 +613,7 @@ let a: Huga + Piyo
 stmt subject has a { Huga::hoge: value }
 #show query Huga { Huga::hoge: value }"#;
         let program = parse("qualified-property.mt", source).unwrap();
-        let Item::Statement(statement) = &program.items[4] else { panic!("expected statement"); };
+        let Item::Statement(statement) = &program.items[5] else { panic!("expected statement"); };
         assert_eq!(statement.properties[0].name, "Huga::hoge");
 
         let error = parse("bad-property-declaration.mt", "def Hoge\ndef Huga { Other::hoge: Hoge }").unwrap_err();
