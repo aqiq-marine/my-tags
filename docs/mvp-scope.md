@@ -98,7 +98,6 @@ The core model is subject-agnostic. A video, chemical reaction, document, experi
 - Dynamic ontology mutation and data migration.
 - Database-backed storage and external database integrations.
 - Remote imports, package registries, wildcard imports, re-exports, and configurable public/private visibility.
-- Remote imports, package registries, wildcard imports, re-exports, and configurable public/private visibility.
 - GUI/editor, LSP, autocomplete, and automatic analysis/tagging.
 - Inference beyond declared type inheritance and subtype compatibility.
 
