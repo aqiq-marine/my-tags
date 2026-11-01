@@ -83,20 +83,6 @@ fn property_definition(
     model.type_by_id(id.owner)?.properties.iter().find(|property| property.id == id)
 }
 
-fn property_is_on_type(model: &ResolvedModel, owner: TypeId, property: PropertyId) -> bool {
-    let mut current = Some(owner);
-    while let Some(type_id) = current {
-        let Some(ty) = model.type_by_id(type_id) else {
-            return false;
-        };
-        if ty.properties.iter().any(|candidate| candidate.id == property) {
-            return true;
-        }
-        current = ty.parent;
-    }
-    false
-}
-
 fn value_at_path<'a>(values: &'a [PropertyValue], path: &[PropertyId]) -> Option<&'a Value> {
     let (first, rest) = path.split_first()?;
     let value = &values.iter().find(|entry| entry.property == *first)?.value;
