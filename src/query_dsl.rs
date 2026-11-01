@@ -3,7 +3,7 @@ use std::fmt;
 
 use crate::{
     ast::{CompareOp, PropertyCondition, PropertyPredicate, QueryExpr, QueryValue},
-    resolved::{InstanceId, PropertyId, ResolvedModel, Statement, Value},
+    resolved::{InstanceId, PropertyId, ResolvedModel, Statement, TypeId, Value},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,19 +32,13 @@ pub fn evaluate(
                 .find(|ty| ty.name == *name)
                 .map(|ty| ty.id)
                 .ok_or_else(|| QueryExecutionError(format!("unknown query type {name}")))?;
-            let properties = conditions.iter()
-                .map(|condition| resolve_condition_property(model, type_id, condition))
-                .collect::<Result<Vec<_>, _>>()?;
 
             let mut result = HashSet::new();
             for statement in &model.statements {
                 if !model.instance_has_type(statement.tag, type_id) {
                     continue;
                 }
-                let matches = conditions.iter().zip(properties.iter()).all(|(condition, property)| {
-                    evaluate_condition(condition, *property, statement, model)
-                });
-                if matches {
+                if evaluate_conditions(type_id, &statement.properties, conditions, model)? {
                     result.insert(statement.subject);
                 }
             }
@@ -78,7 +72,7 @@ fn subject_universe(model: &ResolvedModel) -> HashSet<InstanceId> {
 
 fn resolve_condition_property(
     model: &ResolvedModel,
-    type_id: crate::resolved::TypeId,
+    type_id: TypeId,
     condition: &PropertyCondition,
 ) -> Result<PropertyId, QueryExecutionError> {
     let mut current = Some(type_id);
@@ -97,36 +91,55 @@ fn resolve_condition_property(
     )))
 }
 
-fn evaluate_condition(
-    condition: &PropertyCondition,
-    property: PropertyId,
-    statement: &Statement,
+fn evaluate_conditions(
+    owner_type: TypeId,
+    properties: &[crate::resolved::PropertyValue],
+    conditions: &[PropertyCondition],
     model: &ResolvedModel,
-) -> bool {
-    let value = statement.properties.iter()
-        .find(|entry| entry.property == property)
-        .map(|entry| &entry.value);
-    evaluate_predicate(&condition.predicate, value, model)
+) -> Result<bool, QueryExecutionError> {
+    for condition in conditions {
+        let property = resolve_condition_property(model, owner_type, condition)?;
+        let actual = properties.iter()
+            .find(|entry| entry.property == property)
+            .map(|entry| &entry.value);
+        if !evaluate_predicate(&condition.predicate, actual, model)? {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 fn evaluate_predicate(
     predicate: &PropertyPredicate,
     actual: Option<&Value>,
     model: &ResolvedModel,
-) -> bool {
+) -> Result<bool, QueryExecutionError> {
     match predicate {
-        PropertyPredicate::None => actual.is_none(),
+        PropertyPredicate::None => Ok(actual.is_none()),
         PropertyPredicate::And(left, right) => {
-            evaluate_predicate(left, actual, model)
-                && evaluate_predicate(right, actual, model)
+            Ok(evaluate_predicate(left, actual, model)?
+                && evaluate_predicate(right, actual, model)?)
         }
         PropertyPredicate::Or(left, right) => {
-            evaluate_predicate(left, actual, model)
-                || evaluate_predicate(right, actual, model)
+            Ok(evaluate_predicate(left, actual, model)?
+                || evaluate_predicate(right, actual, model)?)
+        }
+        PropertyPredicate::Anonymous { type_name, conditions, .. } => {
+            let Some(Value::Anonymous { type_id, properties }) = actual else {
+                return Ok(false);
+            };
+            let expected = model.types.iter()
+                .find(|ty| ty.name == *type_name)
+                .map(|ty| ty.id)
+                .ok_or_else(|| QueryExecutionError(format!("unknown nested query type {type_name}")))?;
+            if !model.is_subtype_of(*type_id, expected) {
+                return Ok(false);
+            }
+            evaluate_conditions(*type_id, properties, conditions, model)
         }
         PropertyPredicate::Compare { op, value, .. } => {
-            let Some(actual) = actual else { return false; };
-            match (actual, value) {
+            let Some(actual) = actual else { return Ok(false); };
+            let matches = match (actual, value) {
                 (Value::Number(actual), QueryValue::Number { value: expected, .. }) => {
                     compare_number(*op, *actual, *expected)
                 }
@@ -137,7 +150,8 @@ fn evaluate_predicate(
                     expected.is_some_and(|expected| compare_reference(*op, *actual, expected))
                 }
                 _ => false,
-            }
+            };
+            Ok(matches)
         }
     }
 }
