@@ -18,6 +18,7 @@ A statement subject can be any instance whose type inherits from the built-in **
 - Programmatic query API for tag and property filtering.
 - Query DSL with type filters, property predicates, boolean composition, and set operators.
 - Recursive query patterns for nested anonymous property values.
+- Multi-file projects with recursive imports, module-local aliases, qualified symbol references, and cycle detection.
 - CLI commands: my-tags check <file> validates a source file; my-tags run <file> evaluates its #show query directives.
 
 ## Built-in types
@@ -45,6 +46,15 @@ Run the query example:
 ~~~sh
 cargo run -- run examples/query.mt
 ~~~
+
+Validate and run a multi-file project:
+
+~~~sh
+cargo run -- check examples/modules/main.mt
+cargo run -- run examples/modules/main.mt
+~~~
+
+The entry file imports `chemistry.mt` as `chem`; symbols from that module are referenced as `chem::Reaction` and `chem::reaction`.
 
 A query can combine numeric filtering with a recursively nested anonymous-value pattern:
 
@@ -79,7 +89,8 @@ Within a nested pattern, a bare identifier means reference equality. For example
 - [Resolved Model](docs/resolved-model.md)
 - [Design Overview](docs/overview.md)
 - [ADR 0001: Initial Language Model](docs/adr/0001-initial-language-model.md)
+- [ADR 0003: Module Imports and Namespaces](docs/adr/0003-module-imports.md)
 
 ## Status
 
-The parser, semantic validation, Resolved Model, programmatic query API, and query DSL are implemented with CI coverage. Multi-file loading, query indexing, and a stable interchange format remain future work.
+The parser, semantic validation, Resolved Model, programmatic query API, and query DSL are implemented with CI coverage. Query indexing, explicit module visibility, remote/package imports, and a stable interchange format remain future work.

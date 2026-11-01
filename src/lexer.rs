@@ -18,6 +18,10 @@ impl From<std::ops::Range<usize>> for Span {
 #[logos(skip r"[ \t\r\n]+")]
 #[logos(skip r"//[^\n]*")]
 pub enum TokenKind {
+    #[token("import")] Import,
+    #[token("as")] As,
+    #[regex(r#""[^"\\]*""#, |lex| lex.slice()[1..lex.slice().len()-1].to_owned())]
+    String(String),
     #[token("def")] Def,
     #[token("let")] Let,
     #[token("stmt")] Stmt,
@@ -29,6 +33,7 @@ pub enum TokenKind {
     #[token("}")] RightBrace,
     #[token("(")] LeftParen,
     #[token(")")] RightParen,
+    #[token("::")] ColonColon,
     #[token(":")] Colon,
     #[token("+")] Plus,
     #[token("-")] Minus,

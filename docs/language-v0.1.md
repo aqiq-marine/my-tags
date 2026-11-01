@@ -183,7 +183,9 @@ For example, `SolidColor` is valid for a property whose range is `Appearance`, b
 The following is an initial grammar sketch, not a complete lexer/parser specification.
 
 ```ebnf
-program             = { declaration | statement | show_query } ;
+program             = { import_decl } { declaration | statement | show_query } ;
+
+import_decl         = "import" string "as" identifier ;
 
 declaration         = type_definition | instance_definition ;
 
@@ -196,11 +198,13 @@ type_property_block = "{"
                       "}" ;
 
 type_expression     = type_term { "+" type_term } ;
-type_term           = identifier ;
+type_term           = qualified_name ;
 
 instance_definition = "let" identifier ":" type_expression ;
 
-statement           = "stmt" identifier "has" identifier
+qualified_name      = identifier [ "::" identifier ] ;
+
+statement           = "stmt" qualified_name "has" qualified_name
                       [ statement_property_block ] ;
 
 statement_property_block
@@ -208,10 +212,11 @@ statement_property_block
                       { identifier ":" value_expression }
                       "}" ;
 
-value_expression    = identifier
+value_expression    = qualified_name
                     | numeric_literal
-                    | identifier "{" statement_property_block "}" ;
+                    | qualified_name "{" statement_property_block "}" ;
 
+string              = '"' { character } '"' ;
 numeric_literal     = [ "-" ] ( integer_literal | float_literal ) ;
 integer_literal     = digit { digit } ;
 float_literal       = digit { digit } "." digit { digit } [ exponent ]
@@ -222,9 +227,59 @@ exponent            = ( "e" | "E" ) [ "+" | "-" ] digit { digit } ;
 identifier          = letter { letter | digit | "_" } ;
 ```
 
-The parser/AST distinguishes type property declarations from statement property assignments, even though both use brace-delimited syntax. The initial implementation supports line comments and numeric literals; strings and file/module handling remain future work.
+The parser/AST distinguishes type property declarations from statement property assignments, even though both use brace-delimited syntax. The implementation supports line comments, numeric literals, quoted import paths, and module-qualified names. See Section 9 for multi-file module semantics.
 
-## 9. Semantic validation
+## 9. Module imports and namespaces
+
+### 9.1 Import declarations
+
+A source file is one module. Imports are top-level declarations and use an explicit alias:
+
+```text
+import "chemistry.mt" as chemistry
+import "biology.mt" as biology
+```
+
+The path is resolved relative to the importing file. Paths are local filesystem paths; URL and package-registry imports are not supported. The alias must be a simple identifier and is visible only in the importing module. An import does not re-export the imported module or its aliases.
+
+### 9.2 Qualified names
+
+Definitions are local to their declaring module. A module may refer to its own types and instances by unqualified names. A symbol from an imported module must be qualified with the import alias and the `::` separator:
+
+```text
+import "chemistry.mt" as chemistry
+
+def Sample {
+  atom: chemistry::Atom
+}
+
+def Video: Subject
+let video: Video
+let sample: Sample
+let sample_atom: Tag + chemistry::Atom
+stmt video has sample_atom
+```
+
+Property names remain local to the declaring type and are not module-qualified. Declaration names and property names must be unqualified. Import aliases are not implicitly available through transitive imports.
+
+### 9.3 Loading and identity
+
+The entry file and its transitive imports are loaded as one compilation unit. Each canonical file path is loaded once. A file imported more than once under different aliases by the same importer is rejected; duplicate aliases are rejected. Cyclic imports are rejected and the diagnostic reports the dependency chain.
+
+The canonical module path relative to the entry file directory, together with the local symbol name, identifies a user-defined type or instance. Thus `chemistry.mt::Atom` and `biology.mt::Atom` are distinct symbols even when their local names match. Built-in types (`Subject`, `Tag`, `Float`, `Int`, and `Nat`) remain globally available and are not qualified.
+
+Only `#show query` directives in the entry module are executed. Imported modules contribute declarations and statements, not entry-point queries. All definitions in an imported module are currently visible to importers; explicit `pub`/private visibility is deferred.
+
+### 9.4 Import restrictions
+
+- Imports must be top-level declarations.
+- Import aliases must be unique within a module.
+- The same canonical file may not be imported twice by one module.
+- Cyclic imports are errors.
+- Wildcard imports and re-exports are not supported.
+- Only local filesystem paths are supported.
+
+## 10. Semantic validation
 
 The v0.1 semantic analyzer should check at least:
 
@@ -241,7 +296,7 @@ The v0.1 semantic analyzer should check at least:
 
 Forward references are permitted, so validation should not depend on declaration order.
 
-## 10. AST direction
+## 11. AST direction
 
 A minimal AST can use these top-level node kinds:
 
@@ -268,20 +323,18 @@ ValueExpression
 └── AnonymousInstance(type_name, properties)
 ```
 
-## 11. Open decisions
+## 12. Open decisions
 
 The following are deliberately not fixed by this initial specification:
 
-- File extensions and module/import syntax.
 - Host programming language and exact query API signatures.
-- Cross-file namespaces and identity rules.
 - Unknown/null values and explicit empty values.
 - Query indexing and optimization strategy.
 - Exact diagnostics format.
 
 These should be resolved as implementation requires, without silently expanding the v0.1 scope.
 
-## 12. Queries
+## 13. Queries
 
 A query is an expression that evaluates to a set of statement subjects (instances). A query is introduced by a display directive:
 
@@ -297,7 +350,7 @@ A type-query block selects subjects having at least one statement whose tag inst
 
 A property named in a query must be declared on the queried type or one of its ancestors. An unknown property is a semantic error, not a query that silently returns an empty set.
 
-### 12.1 Property predicates
+### 13.1 Property predicates
 
 ```text
 Reaction {
@@ -326,7 +379,7 @@ In a property predicate, a bare identifier such as `solvent: methanol` or nested
 
 Property-level NOT is not part of v0.1. Use `none` for explicit absence.
 
-### 12.2 Set operators
+### 13.2 Set operators
 
 ```text
 #show query (Reaction {} & Hoge {}) - Asymmetric {}
@@ -344,7 +397,7 @@ The operators are evaluated over sets of subject instances:
 
 Precedence, from highest to lowest, is unary `!`, then `&` and `-` (left associative), then `|`. Parentheses override precedence. The complement universe is the set of instances that occur as subjects of at least one statement in the current source model.
 
-### 12.3 Query grammar
+### 13.3 Query grammar
 
 The implemented query grammar is summarized below:
 
@@ -355,7 +408,7 @@ query_intersection
                  = query_unary { ("&" | "-") query_unary } ;
 query_unary      = "!" query_unary | query_primary ;
 query_primary    = type_query | "(" query_expr ")" ;
-type_query       = identifier "{" { property_condition } "}" ;
+type_query       = qualified_name "{" { property_condition } "}" ;
 property_condition
                  = identifier ":" property_predicate ;
 property_predicate
@@ -363,16 +416,16 @@ property_predicate
 property_and     = property_atom { "&&" property_atom } ;
 property_atom    = "none"
                  | "(" comparison value ")"
-                 | identifier
+                 | qualified_name
                  | anonymous_pattern ;
 anonymous_pattern
-                 = identifier "{" { property_condition } "}" ;
+                 = qualified_name "{" { property_condition } "}" ;
 comparison       = "==" | "!=" | ">" | ">=" | "<" | "<=" ;
 ```
 
 Whitespace and line breaks separate adjacent property conditions; commas are optional separators. Comparisons are parenthesized so that the property predicate grammar remains unambiguous.
 
-### 12.4 Executing display directives
+### 13.4 Executing display directives
 
 `my-tags check file.mt` parses and type-checks queries without evaluating them. `my-tags run file.mt` evaluates each `#show query` directive in source order and prints the matching subject instance names.
 

@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        CompareOp, InstanceDefinition, Item, Program, PropertyAssignment, PropertyCondition,
+        CompareOp, ImportDeclaration, InstanceDefinition, Item, Program, PropertyAssignment, PropertyCondition,
         PropertyDefinition, PropertyPredicate, Query, QueryExpr, QueryValue, Statement,
         TypeDefinition, TypeExpression, ValueExpression,
     },
@@ -24,22 +24,43 @@ struct Parser<'a> {
 impl Parser<'_> {
     fn parse_program(mut self) -> Result<Program, FrontendError> {
         let mut items = Vec::new();
+        let mut saw_non_import = false;
         while let Some(kind) = self.current().map(|token| token.kind.clone()) {
             let item = match kind {
-                TokenKind::Def => Item::TypeDefinition(self.parse_type_definition()?),
-                TokenKind::Let => Item::InstanceDefinition(self.parse_instance_definition()?),
-                TokenKind::Stmt => Item::Statement(self.parse_statement()?),
-                TokenKind::Hash => Item::ShowQuery(self.parse_show_query()?),
-                _ => return Err(self.error_here("expected a top-level declaration or #show query")),
+                TokenKind::Import if !saw_non_import => Item::Import(self.parse_import()?),
+                TokenKind::Import => return Err(self.error_here("imports must appear before declarations")),
+                TokenKind::Def => { saw_non_import = true; Item::TypeDefinition(self.parse_type_definition()?) },
+                TokenKind::Let => { saw_non_import = true; Item::InstanceDefinition(self.parse_instance_definition()?) },
+                TokenKind::Stmt => { saw_non_import = true; Item::Statement(self.parse_statement()?) },
+                TokenKind::Hash => { saw_non_import = true; Item::ShowQuery(self.parse_show_query()?) },
+                _ => return Err(self.error_here("expected an import, declaration, statement, or #show query")),
             };
             items.push(item);
         }
         Ok(Program { items })
     }
 
+    fn parse_import(&mut self) -> Result<ImportDeclaration, FrontendError> {
+        let start = self.expect_simple(|kind| matches!(kind, TokenKind::Import), "import")?.span;
+        let (path, path_span) = match self.current().cloned() {
+            Some(Token { kind: TokenKind::String(path), span }) => { self.cursor += 1; (path, span) }
+            _ => return Err(self.error_here("expected a quoted import path")),
+        };
+        self.expect_simple(|kind| matches!(kind, TokenKind::As), "as")?;
+        let (alias, alias_span) = self.expect_identifier()?;
+        if alias.contains("::") {
+            return Err(self.error_at("import alias must be a simple identifier", alias_span));
+        }
+        Ok(ImportDeclaration {
+            path,
+            alias,
+            span: Span { start: start.start, end: alias_span.end.max(path_span.end) },
+        })
+    }
+
     fn parse_type_definition(&mut self) -> Result<TypeDefinition, FrontendError> {
         let start = self.expect_simple(|kind| matches!(kind, TokenKind::Def), "def")?.span;
-        let (name, name_span) = self.expect_identifier()?;
+        let (name, name_span) = self.expect_local_identifier()?;
 
         // Accept both parent-before-properties and properties-before-parent forms.
         let parent_before = if self.consume_simple(|kind| matches!(kind, TokenKind::Colon)).is_some() {
@@ -74,7 +95,7 @@ impl Parser<'_> {
             if self.current().is_none() {
                 return Err(self.error_here("unterminated property block; expected }"));
             }
-            let (name, name_span) = self.expect_identifier()?;
+            let (name, name_span) = self.expect_local_identifier()?;
             self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
             let value_type = self.parse_type_expression()?;
             let end = value_type.span;
@@ -105,7 +126,7 @@ impl Parser<'_> {
 
     fn parse_instance_definition(&mut self) -> Result<InstanceDefinition, FrontendError> {
         let start = self.expect_simple(|kind| matches!(kind, TokenKind::Let), "let")?.span;
-        let (name, _) = self.expect_identifier()?;
+        let (name, _) = self.expect_local_identifier()?;
         self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
         let instance_type = self.parse_type_expression()?;
         Ok(InstanceDefinition {
@@ -136,7 +157,7 @@ impl Parser<'_> {
             if self.current().is_none() {
                 return Err(self.error_here("unterminated property block; expected }"));
             }
-            let (name, name_span) = self.expect_identifier()?;
+            let (name, name_span) = self.expect_local_identifier()?;
             self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
             let value = self.parse_value_expression()?;
             let end = value.span();
@@ -223,7 +244,7 @@ impl Parser<'_> {
             if self.current().is_none() {
                 return Err(self.error_here("unterminated query type block; expected }"));
             }
-            let (property, property_span) = self.expect_identifier()?;
+            let (property, property_span) = self.expect_local_identifier()?;
             self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
             let predicate = self.parse_query_predicate_or()?;
             let end = self.previous_span().unwrap_or(property_span);
@@ -259,40 +280,41 @@ impl Parser<'_> {
     }
 
     fn parse_query_predicate_atom(&mut self) -> Result<PropertyPredicate, FrontendError> {
-        if let Some(Token { kind: TokenKind::Identifier(type_name), span: type_span }) = self.current().cloned()
-            && matches!(self.tokens.get(self.cursor + 1).map(|token| &token.kind), Some(TokenKind::LeftBrace))
-        {
-            self.cursor += 1;
-            self.expect_simple(|kind| matches!(kind, TokenKind::LeftBrace), "{")?;
-            let mut conditions = Vec::new();
-            while !self.check(|kind| matches!(kind, TokenKind::RightBrace)) {
-                if self.current().is_none() {
-                    return Err(self.error_here("unterminated nested query block; expected }"));
+        if matches!(self.current().map(|token| &token.kind), Some(TokenKind::Identifier(_))) {
+            let saved = self.cursor;
+            let (type_name, type_span) = self.expect_identifier()?;
+            if self.check(|kind| matches!(kind, TokenKind::LeftBrace)) {
+                self.expect_simple(|kind| matches!(kind, TokenKind::LeftBrace), "{")?;
+                let mut conditions = Vec::new();
+                while !self.check(|kind| matches!(kind, TokenKind::RightBrace)) {
+                    if self.current().is_none() {
+                        return Err(self.error_here("unterminated nested query block; expected }"));
+                    }
+                    let (property, property_span) = self.expect_local_identifier()?;
+                    self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
+                    let predicate = self.parse_query_predicate_or()?;
+                    let end = self.previous_span().unwrap_or(property_span);
+                    conditions.push(PropertyCondition {
+                        name: property,
+                        predicate,
+                        span: Span { start: property_span.start, end: end.end },
+                    });
+                    self.consume_simple(|kind| matches!(kind, TokenKind::Comma));
                 }
-                let (property, property_span) = self.expect_identifier()?;
-                self.expect_simple(|kind| matches!(kind, TokenKind::Colon), ":")?;
-                let predicate = self.parse_query_predicate_or()?;
-                let end = self.previous_span().unwrap_or(property_span);
-                conditions.push(PropertyCondition {
-                    name: property,
-                    predicate,
-                    span: Span { start: property_span.start, end: end.end },
+                let end = self.expect_simple(|kind| matches!(kind, TokenKind::RightBrace), "}")?.span;
+                return Ok(PropertyPredicate::Anonymous {
+                    type_name,
+                    conditions,
+                    span: Span { start: type_span.start, end: end.end },
                 });
-                self.consume_simple(|kind| matches!(kind, TokenKind::Comma));
             }
-            let end = self.expect_simple(|kind| matches!(kind, TokenKind::RightBrace), "}")?.span;
-            return Ok(PropertyPredicate::Anonymous {
-                type_name,
-                conditions,
-                span: Span { start: type_span.start, end: end.end },
-            });
+            self.cursor = saved;
         }
 
-        if let Some(Token { kind: TokenKind::Identifier(name), span }) = self.current().cloned()
-            && name != "none"
+        if matches!(self.current().map(|token| &token.kind), Some(TokenKind::Identifier(name)) if name != "none")
             && !matches!(self.tokens.get(self.cursor + 1).map(|token| &token.kind), Some(TokenKind::LeftParen))
         {
-            self.cursor += 1;
+            let (name, span) = self.expect_identifier()?;
             return Ok(PropertyPredicate::Compare {
                 op: CompareOp::Eq,
                 value: QueryValue::Reference { name, span },
@@ -411,14 +433,35 @@ impl Parser<'_> {
             .ok_or_else(|| self.error_here(format!("expected {expected}")))
     }
 
+    fn expect_local_identifier(&mut self) -> Result<(String, Span), FrontendError> {
+        let (name, span) = self.expect_identifier()?;
+        if name.contains("::") {
+            return Err(self.error_at("expected an unqualified identifier", span));
+        }
+        Ok((name, span))
+    }
+
     fn expect_identifier(&mut self) -> Result<(String, Span), FrontendError> {
-        match self.current().cloned() {
+        let (mut name, first_span) = match self.current().cloned() {
             Some(Token { kind: TokenKind::Identifier(name), span }) => {
                 self.cursor += 1;
-                Ok((name, span))
+                (name, span)
             }
-            _ => Err(self.error_here("expected an identifier")),
+            _ => return Err(self.error_here("expected an identifier")),
+        };
+        let mut end = first_span;
+        while self.consume_simple(|kind| matches!(kind, TokenKind::ColonColon)).is_some() {
+            match self.current().cloned() {
+                Some(Token { kind: TokenKind::Identifier(part), span }) => {
+                    self.cursor += 1;
+                    name.push_str("::");
+                    name.push_str(&part);
+                    end = span;
+                }
+                _ => return Err(self.error_here("expected an identifier after ::")),
+            }
         }
+        Ok((name, Span { start: first_span.start, end: end.end }))
     }
 
     fn error_here(&self, message: impl Into<String>) -> FrontendError {
@@ -532,4 +575,29 @@ stmt video_a has cat {
         let error = parse("bad.mt", "def Color { value: Int").unwrap_err();
         assert!(error.to_string().contains("unterminated"));
     }
+    #[test]
+    fn parses_imports_and_qualified_names() {
+        let program = parse(
+            "main.mt",
+            "import \"chemistry.mt\" as chem\nlet sample: chem::Molecule\n#show query chem::Molecule { atom: chem::atom }",
+        ).unwrap();
+        assert!(matches!(&program.items[0], Item::Import(import) if import.path == "chemistry.mt" && import.alias == "chem"));
+        let Item::InstanceDefinition(instance) = &program.items[1] else { panic!("expected instance"); };
+        assert_eq!(instance.instance_type.terms, vec!["chem::Molecule".to_owned()]);
+        let Item::ShowQuery(query) = &program.items[2] else { panic!("expected query"); };
+        assert!(matches!(&query.expression, QueryExpr::Type { name, .. } if name == "chem::Molecule"));
+    }
+
+    #[test]
+    fn rejects_qualified_declaration_names() {
+        assert!(parse("bad.mt", "def chemistry::Atom").is_err());
+        assert!(parse("bad.mt", "let chemistry::atom: Atom").is_err());
+    }
+
+    #[test]
+    fn requires_imports_to_precede_other_items() {
+        let error = parse("late-import.mt", "def Atom\nimport \"chemistry.mt\" as chem").unwrap_err();
+        assert!(error.to_string().contains("imports must appear before declarations"));
+    }
+
 }

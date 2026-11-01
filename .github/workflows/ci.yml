@@ -19,3 +19,5 @@ jobs:
       - run: cargo run -- check examples/basic.mt
       - run: cargo run -- check examples/query.mt
       - run: cargo run -- run examples/query.mt
+      - run: cargo run -- check examples/modules/main.mt
+      - run: cargo run -- run examples/modules/main.mt

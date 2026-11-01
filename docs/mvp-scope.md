@@ -80,6 +80,10 @@ The core model is subject-agnostic. A video, chemical reaction, document, experi
 
 ### Storage and developer interface
 - Ontology, instance, and statement data are stored in source files.
+- A project may be split across multiple `.mt` modules using `import "path.mt" as alias`.
+- Imports are resolved recursively relative to the importing file.
+- External symbols are referenced with `alias::name`; aliases are module-local and are not re-exported.
+- Duplicate aliases, repeated imports of the same file by one module, and cyclic imports are rejected.
 - Provide a library/API to load, validate, resolve, and query those files.
 - Provide CLI commands for source validation and query execution.
 - Diagnostics should include source locations when available.
@@ -93,6 +97,7 @@ The core model is subject-agnostic. A video, chemical reaction, document, experi
 - Required properties, defaults, and validation of absent optional properties.
 - Dynamic ontology mutation and data migration.
 - Database-backed storage and external database integrations.
+- Remote imports, package registries, wildcard imports, re-exports, and configurable public/private visibility.
 - GUI/editor, LSP, autocomplete, and automatic analysis/tagging.
 - Inference beyond declared type inheritance and subtype compatibility.
 
@@ -107,6 +112,7 @@ v0.1 is complete when an example project can:
 6. Query through the programmatic API using tag and property conditions.
 7. Parse, type-check, and execute a documented #show query example, including a nested anonymous-value pattern.
 8. Return matching subject instance IDs for the documented example.
+9. Load a project split across multiple modules, resolve qualified references, and reject import cycles and duplicate aliases.
 
 ## Related specification
 

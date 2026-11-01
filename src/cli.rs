@@ -1,10 +1,10 @@
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-use miette::{IntoDiagnostic, Report, miette};
+use miette::{Report, miette};
 
 use crate::{
-    analyze, parse, resolve,
+    analyze, load_project_with_source, resolve,
     ast::Item,
     query_dsl,
 };
@@ -35,11 +35,9 @@ pub fn run() -> miette::Result<()> {
 
     match cli.command {
         Command::Check { file } => {
-            let source = fs::read_to_string(&file).into_diagnostic()?;
-            let source_name = file.display().to_string();
-            let program = parse(&source_name, &source).map_err(Report::new)?;
+            let project = load_project_with_source(&file).map_err(|error| miette!("{error}"))?;
 
-            if let Err(errors) = analyze(&program, &source_name, &source) {
+            if let Err(errors) = analyze(&project.program, &project.source_name, &project.source) {
                 for error in errors {
                     eprintln!("{:?}", Report::new(error));
                 }
@@ -48,18 +46,17 @@ pub fn run() -> miette::Result<()> {
 
             println!(
                 "{}: valid ({} top-level items)",
-                source_name,
-                program.items.len()
+                file.display(),
+                project.program.items.len()
             );
         }
         Command::Run { file } => {
-            let source = fs::read_to_string(&file).into_diagnostic()?;
-            let source_name = file.display().to_string();
-            let program = parse(&source_name, &source).map_err(Report::new)?;
-            let model = resolve(&program, &source_name, &source).map_err(|error| miette!("{}", error))?;
+            let project = load_project_with_source(&file).map_err(|error| miette!("{error}"))?;
+            let model = resolve(&project.program, &project.source_name, &project.source)
+                .map_err(|error| miette!("{}", error))?;
             let mut query_count = 0usize;
 
-            for item in &program.items {
+            for item in &project.program.items {
                 if let Item::ShowQuery(query) = item {
                     query_count += 1;
                     let mut ids: Vec<_> = query_dsl::evaluate(&model, &query.expression)
@@ -77,7 +74,7 @@ pub fn run() -> miette::Result<()> {
             }
 
             if query_count == 0 {
-                println!("{}: no #show query directives", source_name);
+                println!("{}: no #show query directives", file.display());
             }
         }
     }
