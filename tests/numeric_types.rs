@@ -172,7 +172,7 @@ fn rejects_numeric_narrowing_conversions() {
 fn rejects_non_finite_float_spellings_as_numeric_values() {
     for literal in ["NaN", "Infinity"] {
         let source = format!(
-            "def Experiment: Subject\\ndef Measurement: Tag {{ value: Float }}\\nlet experiment: Experiment\\nlet measurement: Measurement\\nstmt experiment has measurement {{ value: {literal} }}"
+            "def Experiment: Subject\ndef Measurement: Tag {{ value: Float }}\nlet experiment: Experiment\nlet measurement: Measurement\nstmt experiment has measurement {{ value: {literal} }}"
         );
         let program = parse("non-finite.mt", &source).expect("identifier-shaped input should parse");
         assert!(
@@ -181,7 +181,7 @@ fn rejects_non_finite_float_spellings_as_numeric_values() {
         );
     }
 
-    let negative_infinity = "def Experiment: Subject\\ndef Measurement: Tag { value: Float }\\nlet experiment: Experiment\\nlet measurement: Measurement\\nstmt experiment has measurement { value: -Infinity }";
+    let negative_infinity = "def Experiment: Subject\ndef Measurement: Tag { value: Float }\nlet experiment: Experiment\nlet measurement: Measurement\nstmt experiment has measurement { value: -Infinity }";
     assert!(parse("non-finite.mt", negative_infinity).is_err());
 }
 
